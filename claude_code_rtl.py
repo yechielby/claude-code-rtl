@@ -187,7 +187,7 @@ RTL_JS_CODE = """
 
         var btn = document.createElement('button');
         btn.id = BTN_ID;
-        btn.textContent = '\\u05E2';
+        btn.textContent = '\\u21C4';
         btn.title = 'Toggle RTL mode';
 
         btn.addEventListener('click', function() {
