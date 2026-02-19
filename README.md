@@ -1,5 +1,7 @@
 # Claude Code in VS Code - RTL Support for Hebrew & Arabic
 
+**Fixes reversed text and alignment issues in Anthropic's Claude Code within VS Code for Hebrew and Arabic users.**
+
 ---
 
 ## 🌍 בחר שפה | اختر اللغة
@@ -7,6 +9,36 @@
 | 🇮🇱 עברית | 🇸🇦 العربية |
 |:---:|:---:|
 | [לקרוא בעברית ↓](#עברית) | [اقرأ بالعربية ↓](#عربية) |
+
+---
+
+## ✨ Key Features
+
+- **Automatic RTL Detection** - Automatically detects Hebrew and Arabic text and applies right-to-left formatting
+- **VS Code Integration** - Full seamless integration with Claude Code extension in VS Code
+- **Zero Configuration** - Works out of the box with a simple toggle button (⇄) in the chat interface
+- **Smart Text Handling** - Keeps code blocks and technical content in LTR for proper readability
+- **Backup & Restore** - Automatically creates backups before modifications, easy rollback available
+
+---
+
+## 🤔 Why This is Needed
+
+Claude Code extension in Anthropic's official VS Code integration doesn't natively support RTL text direction. This causes:
+- ❌ Hebrew and Arabic text appearing reversed and misaligned
+- ❌ Chat conversations becoming hard to read for RTL language users
+- ❌ Inconsistent text direction mixing with code blocks
+
+**This tool solves these issues** by injecting CSS and JavaScript that intelligently handles RTL text while preserving code block formatting and maintaining compatibility with all versions of Claude Code.
+
+---
+
+## 🎯 Key Solutions
+
+- **Fixes Text Reversal** - Ensures Hebrew and Arabic characters appear in the correct order and alignment
+- **Terminal Alignment** - Automatically adjusts text direction for VS Code's Claude Code chat panel
+- **Claude Code Integration** - Specifically tailored for @anthropic-ai/claude-code extension
+- **Non-Invasive** - Works by extending the existing UI without modifying core functionality
 
 ---
 
@@ -152,7 +184,7 @@ claude-code-rtl/
 
 ## רישיון
 
-פרויקט זה מופץ תחת רישיון MIT - ראה קובץ LICENSE לפרטים.
+פרויקט זה מופץ תחת רישיון MIT - ראה קובץ [LICENSE](LICENSE) לפרטים.
 
 ## יוצר
 
@@ -313,7 +345,7 @@ claude-code-rtl/
 
 ## الترخيص
 
-يتم توزيع هذا المشروع تحت ترخيص MIT - انظر ملف LICENSE للتفاصيل.
+يتم توزيع هذا المشروع تحت ترخيص MIT - انظر ملف [LICENSE](LICENSE) للتفاصيل.
 
 ## المؤلف
 
@@ -327,5 +359,13 @@ claude-code-rtl/
 ---
 
 **إذا ساعدتك الأداة، امنح المشروع ⭐!**
+
+---
+
+## License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+**Contributing & Support:** Contributions, bug reports, and feature requests are welcome! Please open an Issue or Pull Request on GitHub.
 
 </div>
