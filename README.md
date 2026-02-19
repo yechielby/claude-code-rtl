@@ -1,6 +1,6 @@
-# Claude Code in VS Code - RTL Support for Hebrew & Arabic
+# Claude Code in VS Code - RTL Support for Hebrew & Arabic (+ Cursor)
 
-**Fixes reversed text and alignment issues in Anthropic's Claude Code within VS Code for Hebrew and Arabic users.**
+**Fixes reversed text and alignment issues in the "Claude Code in VS Code" extension for Hebrew and Arabic users. Works in both VS Code and Cursor.**
 
 ---
 
@@ -15,7 +15,7 @@
 ## ✨ Key Features
 
 - **Automatic RTL Detection** - Automatically detects Hebrew and Arabic text and applies right-to-left formatting
-- **VS Code Integration** - Full seamless integration with Claude Code extension in VS Code
+- **VS Code & Cursor Support** - Works with the "Claude Code in VS Code" extension in both VS Code and Cursor
 - **Zero Configuration** - Works out of the box with a simple toggle button (⇄) in the chat interface
 - **Smart Text Handling** - Keeps code blocks and technical content in LTR for proper readability
 - **Backup & Restore** - Automatically creates backups before modifications, easy rollback available
@@ -24,7 +24,7 @@
 
 ## 🤔 Why This is Needed
 
-Claude Code extension in Anthropic's official VS Code integration doesn't natively support RTL text direction. This causes:
+The "Claude Code in VS Code" extension doesn't natively support RTL text direction. This causes:
 - ❌ Hebrew and Arabic text appearing reversed and misaligned
 - ❌ Chat conversations becoming hard to read for RTL language users
 - ❌ Inconsistent text direction mixing with code blocks
@@ -36,8 +36,8 @@ Claude Code extension in Anthropic's official VS Code integration doesn't native
 ## 🎯 Key Solutions
 
 - **Fixes Text Reversal** - Ensures Hebrew and Arabic characters appear in the correct order and alignment
-- **Terminal Alignment** - Automatically adjusts text direction for VS Code's Claude Code chat panel
-- **Claude Code Integration** - Specifically tailored for @anthropic-ai/claude-code extension
+- **Terminal Alignment** - Automatically adjusts text direction in the Claude Code chat panel
+- **Claude Code Integration** - Specifically tailored for the "Claude Code in VS Code" extension (works in Cursor too)
 - **Non-Invasive** - Works by extending the existing UI without modifying core functionality
 
 ---
@@ -50,12 +50,12 @@ Claude Code extension in Anthropic's official VS Code integration doesn't native
 
 ### תיאור
 
-כלי Python שמוסיף תמיכה ב-RTL (Right-to-Left) לפלאגין **Claude Code for VS Code**, מאפשר עבודה נוחה עם שפות עברית וערבית בצ'אט של Claude.
+כלי Python שמוסיף תמיכה ב-RTL (Right-to-Left) לתוסף **"Claude Code in VS Code"**, מאפשר עבודה נוחה עם שפות עברית וערבית בצ'אט של Claude. עובד גם ב-VS Code וגם ב-Cursor.
 
 ## מה הכלי עושה?
 
 הסקריפט מבצע את הפעולות הבאות:
-1. **מאתר אוטומטית** את תיקיות ההתקנה של Claude Code (תומך ב-Windows, macOS ו-Linux)
+1. **מאתר אוטומטית** את תיקיות ההתקנה של Claude Code (תומך ב-VS Code ו-Cursor על Windows, macOS ו-Linux)
 2. **מזריק CSS** - מוסיף כללי עיצוב שהופכים את הטקסט לכיווניות RTL
 3. **מוסיף כפתור Toggle** - יוצר כפתור (`⇄`) בממשק להפעלה/כיבוי של מצב RTL
 4. **שומר גיבויים** - יוצר עותקי גיבוי של הקבצים המקוריים לפני כל שינוי
@@ -64,14 +64,14 @@ Claude Code extension in Anthropic's official VS Code integration doesn't native
 ## דרישות מערכת
 
 - **Python 3.6+**
-- **Claude Code for VS Code** - חייב להיות מותקן
+- **"Claude Code in VS Code"** - התוסף חייב להיות מותקן (ב-VS Code או ב-Cursor)
 - הרשאות לכתיבה לתיקיית ההרחבות (במקרה של Windows עשוי להידרש הרצה כמנהל)
 
 ## התקנה ושימוש
 
 ### שלב 1: הורדה
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-code-rtl.git
+git clone https://github.com/yechielby/claude-code-rtl.git
 cd claude-code-rtl
 ```
 
@@ -93,7 +93,7 @@ python3 claude_code_rtl.py
 
 ```
 =========================================================
-  Claude Code for VS Code - RTL Text Support
+  Claude Code in VS Code - RTL Text Support (+ Cursor)
 =========================================================
   1. Add RTL support (all versions)
   2. Remove RTL support (all versions)
@@ -106,15 +106,15 @@ python3 claude_code_rtl.py
 2. **הסרת תמיכה ב-RTL** - בחר אפשרות `2`
 3. **בדיקת סטטוס** - בחר אפשרות `3` לראות האם RTL מותקן
 
-### שלב 4: אתחול VS Code
+### שלב 4: אתחול VS Code / Cursor
 
 לאחר ביצוע השינויים:
-- **סגור וטען מחדש** את חלון VS Code (או לחץ `Ctrl+Shift+P` → `Developer: Reload Window`)
+- **סגור וטען מחדש** את חלון VS Code / Cursor (או לחץ `Ctrl+Shift+P` → `Developer: Reload Window`)
 - הכפתור `⇄` יופיע בממשק הצ'אט של Claude
 
 ## איך להשתמש?
 
-1. פתח את פאנל הצ'אט של Claude Code ב-VS Code
+1. פתח את פאנל הצ'אט של Claude Code ב-VS Code / Cursor
 2. לחץ על הכפתור **⇄** בראש הצ'אט
 3. הממשק יעבור למצב RTL - טקסט יישר לימין
 4. לחץ שוב על הכפתור כדי לחזור למצב LTR
@@ -140,7 +140,7 @@ python3 claude_code_rtl.py
 1. הרץ את הסקריפט שוב
 2. בחר אפשרות `2` מהתפריט
 3. הסקריפט ישחזר את הקבצים המקוריים מהגיבוי
-4. אתחל את VS Code
+4. אתחל את VS Code / Cursor
 
 ## מבנה הפרויקט
 
@@ -157,7 +157,7 @@ claude-code-rtl/
 - **נסה הרצה כמנהל** (Windows): לחץ ימני → Run as Administrator
 
 ### השינויים לא נראים
-- **אתחל את VS Code**: סגור לחלוטין ופתח מחדש
+- **אתחל את VS Code / Cursor**: סגור לחלוטין ופתח מחדש
 - **או טען חלון מחדש**: `Ctrl+Shift+P` → `Developer: Reload Window`
 
 ### שגיאת הרשאות (Permission Denied)
@@ -173,7 +173,7 @@ claude-code-rtl/
 - **Python 3** - שפת הסקריפט
 - **CSS** - כללי עיצוב RTL
 - **JavaScript** - לוגיקת כפתור ההחלפה
-- **VS Code Extensions API** - אינטגרציה עם הפלאגין
+- **VS Code / Cursor Extensions** - אינטגרציה עם התוסף
 
 ## תרומה לפרויקט
 
@@ -188,12 +188,13 @@ claude-code-rtl/
 
 ## יוצר
 
-נוצר כדי לאפשר למשתמשי עברית וערבית לעבוד בצורה נוחה עם Claude Code ב-VS Code.
+נוצר כדי לאפשר למשתמשי עברית וערבית לעבוד בצורה נוחה עם התוסף "Claude Code in VS Code" (ב-VS Code וב-Cursor).
 
 ## קישורים
 
 - [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=Anthropic.claude-code)
 - [VS Code](https://code.visualstudio.com/)
+- [Cursor](https://cursor.com/)
 
 ---
 
@@ -211,12 +212,12 @@ claude-code-rtl/
 
 ### الوصف
 
-أداة Python تضيف دعم RTL (من اليمين إلى اليسار) لإضافة **Claude Code for VS Code**، مما يتيح العمل بسهولة مع اللغات العربية والعبرية في محادثة Claude.
+أداة Python تضيف دعم RTL (من اليمين إلى اليسار) لإضافة **"Claude Code in VS Code"**، مما يتيح العمل بسهولة مع اللغات العربية والعبرية في محادثة Claude. تعمل في VS Code و Cursor.
 
 ## ماذا تفعل الأداة؟
 
 يقوم البرنامج بتنفيذ العمليات التالية:
-1. **يحدد تلقائيًا** مجلدات تثبيت Claude Code (يدعم Windows و macOS و Linux)
+1. **يحدد تلقائيًا** مجلدات تثبيت Claude Code (يدعم VS Code و Cursor على Windows و macOS و Linux)
 2. **يحقن CSS** - يضيف قواعد تصميم تحول النص إلى اتجاه RTL
 3. **يضيف زر Toggle** - ينشئ زرًا (`⇄`) في الواجهة لتفعيل/إيقاف وضع RTL
 4. **يحفظ نسخًا احتياطية** - ينشئ نسخًا احتياطية من الملفات الأصلية قبل أي تعديل
@@ -225,14 +226,14 @@ claude-code-rtl/
 ## متطلبات النظام
 
 - **Python 3.6+**
-- **Claude Code for VS Code** - يجب أن يكون مثبتًا
+- **"Claude Code in VS Code"** - يجب أن يكون مثبتًا (في VS Code أو Cursor)
 - صلاحيات الكتابة لمجلد الإضافات (في حالة Windows قد يتطلب التشغيل كمسؤول)
 
 ## التثبيت والاستخدام
 
 ### الخطوة 1: التنزيل
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-code-rtl.git
+git clone https://github.com/yechielby/claude-code-rtl.git
 cd claude-code-rtl
 ```
 
@@ -254,7 +255,7 @@ python3 claude_code_rtl.py
 
 ```
 =========================================================
-  Claude Code for VS Code - RTL Text Support
+  Claude Code in VS Code - RTL Text Support (+ Cursor)
 =========================================================
   1. Add RTL support (all versions)
   2. Remove RTL support (all versions)
@@ -267,15 +268,15 @@ python3 claude_code_rtl.py
 2. **إزالة دعم RTL** - اختر الخيار `2`
 3. **فحص الحالة** - اختر الخيار `3` لمعرفة ما إذا كان RTL مثبتًا
 
-### الخطوة 4: إعادة تشغيل VS Code
+### الخطوة 4: إعادة تشغيل VS Code / Cursor
 
 بعد إجراء التغييرات:
-- **أغلق وأعد تحميل** نافذة VS Code (أو اضغط `Ctrl+Shift+P` → `Developer: Reload Window`)
+- **أغلق وأعد تحميل** نافذة VS Code / Cursor (أو اضغط `Ctrl+Shift+P` → `Developer: Reload Window`)
 - سيظهر الزر `⇄` في واجهة محادثة Claude
 
 ## كيفية الاستخدام?
 
-1. افتح لوحة محادثة Claude Code في VS Code
+1. افتح لوحة محادثة Claude Code في VS Code / Cursor
 2. اضغط على الزر **⇄** في أعلى المحادثة
 3. ستتحول الواجهة إلى وضع RTL - سيتم محاذاة النص إلى اليمين
 4. اضغط على الزر مرة أخرى للعودة إلى وضع LTR
@@ -301,7 +302,7 @@ python3 claude_code_rtl.py
 1. شغّل البرنامج مرة أخرى
 2. اختر الخيار `2` من القائمة
 3. سيستعيد البرنامج الملفات الأصلية من النسخة الاحتياطية
-4. أعد تشغيل VS Code
+4. أعد تشغيل VS Code / Cursor
 
 ## هيكل المشروع
 
@@ -318,7 +319,7 @@ claude-code-rtl/
 - **جرب التشغيل كمسؤول** (Windows): انقر بزر الماوس الأيمن → Run as Administrator
 
 ### التغييرات لا تظهر
-- **أعد تشغيل VS Code**: أغلق تمامًا وافتح من جديد
+- **أعد تشغيل VS Code / Cursor**: أغلق تمامًا وافتح من جديد
 - **أو أعد تحميل النافذة**: `Ctrl+Shift+P` → `Developer: Reload Window`
 
 ### خطأ في الصلاحيات (Permission Denied)
@@ -334,7 +335,7 @@ claude-code-rtl/
 - **Python 3** - لغة البرنامج
 - **CSS** - قواعد تصميم RTL
 - **JavaScript** - منطق زر التبديل
-- **VS Code Extensions API** - التكامل مع الإضافة
+- **VS Code / Cursor Extensions** - التكامل مع الإضافة
 
 ## المساهمة في المشروع
 
@@ -349,12 +350,13 @@ claude-code-rtl/
 
 ## المؤلف
 
-تم إنشاؤه لتمكين مستخدمي العربية والعبرية من العمل بشكل مريح مع Claude Code في VS Code.
+تم إنشاؤه لتمكين مستخدمي العربية والعبرية من العمل بشكل مريح مع إضافة "Claude Code in VS Code" (في VS Code و Cursor).
 
 ## الروابط
 
 - [Claude Code for VS Code](https://marketplace.visualstudio.com/items?itemName=Anthropic.claude-code)
 - [VS Code](https://code.visualstudio.com/)
+- [Cursor](https://cursor.com/)
 
 ---
 

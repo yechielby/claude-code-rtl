@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Claude Code for VS Code - RTL Text Support Script
-Adds RTL (Right-to-Left) text support for Claude Code chat in VS Code
+"Claude Code in VS Code" - RTL Text Support Script
+Adds RTL (Right-to-Left) text support for the "Claude Code in VS Code" extension (works in VS Code and Cursor)
 
 Approach:
   - Injects CSS into webview/index.css (RTL rules scoped to .YBYrtl class)
@@ -17,7 +17,7 @@ import glob
 from pathlib import Path
 
 RTL_CSS_RULES = """
-/* RTL Text Support for Claude Code VS Code Extension - Added by script */
+/* RTL Text Support for Claude Code VS Code / Cursor Extension - Added by script */
 
 /* ==========================================
    Toggle button - always visible
@@ -171,7 +171,7 @@ RTL_CSS_RULES = """
     text-align: left !important;
 }
 
-/* End RTL Text Support for Claude Code VS Code Extension */
+/* End RTL Text Support for Claude Code VS Code / Cursor Extension */
 """
 
 RTL_JS_CODE = """
@@ -216,8 +216,8 @@ RTL_JS_CODE = """
 """
 
 # Markers to identify injected CSS
-RTL_START_MARKER = "/* RTL Text Support for Claude Code VS Code Extension - Added by script */"
-RTL_END_MARKER = "/* End RTL Text Support for Claude Code VS Code Extension */"
+RTL_START_MARKER = "/* RTL Text Support for Claude Code VS Code / Cursor Extension - Added by script */"
+RTL_END_MARKER = "/* End RTL Text Support for Claude Code VS Code / Cursor Extension */"
 
 # Markers to identify injected JS
 JS_START_MARKER = "/* RTL Toggle Button - Added by script */"
@@ -291,8 +291,8 @@ def find_claude_extensions():
         if userprofile:
             search_dirs.append(os.path.join(userprofile, ".vscode", "extensions"))
             search_dirs.append(os.path.join(userprofile, ".vscode-server", "extensions"))
-            # Also check for Cursor
             search_dirs.append(os.path.join(userprofile, ".cursor", "extensions"))
+            search_dirs.append(os.path.join(userprofile, ".cursor-server", "extensions"))
 
         # Also search inside WSL distros (\\wsl$\Ubuntu\home\user\...)
         for wsl_home in _get_wsl_linux_homes():
@@ -303,11 +303,13 @@ def find_claude_extensions():
         search_dirs.append(os.path.join(home, ".vscode", "extensions"))
         search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
         search_dirs.append(os.path.join(home, ".cursor", "extensions"))
+        search_dirs.append(os.path.join(home, ".cursor-server", "extensions"))
     elif system == "linux":
         home = str(Path.home())
         search_dirs.append(os.path.join(home, ".vscode", "extensions"))
         search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
         search_dirs.append(os.path.join(home, ".cursor", "extensions"))
+        search_dirs.append(os.path.join(home, ".cursor-server", "extensions"))
 
         # Also search other users' home directories (e.g. running as root)
         if os.path.isdir("/home"):
@@ -319,6 +321,7 @@ def find_claude_extensions():
                     search_dirs.append(os.path.join(user_home, ".vscode", "extensions"))
                     search_dirs.append(os.path.join(user_home, ".vscode-server", "extensions"))
                     search_dirs.append(os.path.join(user_home, ".cursor", "extensions"))
+                    search_dirs.append(os.path.join(user_home, ".cursor-server", "extensions"))
             except PermissionError:
                 pass
 
@@ -328,6 +331,7 @@ def find_claude_extensions():
                 search_dirs.append(os.path.join(win_home, ".vscode", "extensions"))
                 search_dirs.append(os.path.join(win_home, ".vscode-server", "extensions"))
                 search_dirs.append(os.path.join(win_home, ".cursor", "extensions"))
+                search_dirs.append(os.path.join(win_home, ".cursor-server", "extensions"))
 
     found = []
     for ext_dir in search_dirs:
@@ -517,7 +521,7 @@ def check_status(extensions):
 
 def show_menu():
     print("\n" + "=" * 55)
-    print("  Claude Code for VS Code - RTL Text Support")
+    print("  Claude Code in VS Code - RTL Text Support (+ Cursor)")
     print("=" * 55)
     print("  1. Add RTL support (all versions)")
     print("  2. Remove RTL support (all versions)")
@@ -536,7 +540,7 @@ def main():
 
     if not extensions:
         print("\nNo Claude Code extensions found!")
-        print("Make sure Claude Code for VS Code is installed.")
+        print("Make sure the 'Claude Code in VS Code' extension is installed.")
         input("\nPress Enter to exit...")
         return
 
@@ -550,13 +554,13 @@ def main():
             print("\nAdding RTL support...\n")
             for ext in extensions:
                 add_rtl_support(ext)
-            print("\nRestart VS Code / reload window to see changes!")
+            print("\nRestart VS Code / Cursor / reload window to see changes!")
 
         elif choice == "2":
             print("\nRemoving RTL support...\n")
             for ext in extensions:
                 remove_rtl_support(ext)
-            print("\nRestart VS Code / reload window to see changes!")
+            print("\nRestart VS Code / Cursor / reload window to see changes!")
 
         elif choice == "3":
             check_status(extensions)
