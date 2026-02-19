@@ -224,9 +224,65 @@ JS_START_MARKER = "/* RTL Toggle Button - Added by script */"
 JS_END_MARKER = "/* End RTL Toggle Button */"
 
 
+def _is_wsl():
+    """Detect if running inside Windows Subsystem for Linux"""
+    try:
+        with open("/proc/version", "r") as f:
+            return "microsoft" in f.read().lower()
+    except Exception:
+        return False
+
+
+def _get_wsl_windows_homes():
+    """Get Windows user home directories accessible from WSL (e.g. /mnt/c/Users/John)"""
+    homes = []
+    # Check common mount points for Windows drives
+    for drive_letter in ('c', 'd'):
+        users_dir = f"/mnt/{drive_letter}/Users"
+        if not os.path.isdir(users_dir):
+            continue
+        try:
+            for entry in os.listdir(users_dir):
+                if entry.lower() in ("public", "default", "default user", "all users"):
+                    continue
+                user_home = os.path.join(users_dir, entry)
+                if os.path.isdir(user_home):
+                    homes.append(user_home)
+        except PermissionError:
+            continue
+    return homes
+
+
+def _get_wsl_linux_homes():
+    """Get Linux home directories inside WSL distros, accessible from Windows via \\\\wsl$\\"""
+    homes = []
+    skip_users = {"root"}
+    # Try both UNC paths that Windows uses to access WSL filesystems
+    for wsl_root in (r"\\wsl$", r"\\wsl.localhost"):
+        try:
+            distros = os.listdir(wsl_root)
+        except (OSError, PermissionError):
+            continue
+        for distro in distros:
+            home_dir = os.path.join(wsl_root, distro, "home")
+            if not os.path.isdir(home_dir):
+                continue
+            try:
+                for user in os.listdir(home_dir):
+                    if user in skip_users:
+                        continue
+                    user_home = os.path.join(home_dir, user)
+                    if os.path.isdir(user_home):
+                        homes.append(user_home)
+            except (OSError, PermissionError):
+                continue
+    return homes
+
+
 def find_claude_extensions():
     """Find all installed Claude Code extension directories"""
     system = platform.system().lower()
+    wsl = system == "linux" and _is_wsl()
 
     search_dirs = []
 
@@ -237,6 +293,11 @@ def find_claude_extensions():
             search_dirs.append(os.path.join(userprofile, ".vscode-server", "extensions"))
             # Also check for Cursor
             search_dirs.append(os.path.join(userprofile, ".cursor", "extensions"))
+
+        # Also search inside WSL distros (\\wsl$\Ubuntu\home\user\...)
+        for wsl_home in _get_wsl_linux_homes():
+            search_dirs.append(os.path.join(wsl_home, ".vscode-server", "extensions"))
+            search_dirs.append(os.path.join(wsl_home, ".cursor-server", "extensions"))
     elif system == "darwin":
         home = str(Path.home())
         search_dirs.append(os.path.join(home, ".vscode", "extensions"))
@@ -247,6 +308,13 @@ def find_claude_extensions():
         search_dirs.append(os.path.join(home, ".vscode", "extensions"))
         search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
         search_dirs.append(os.path.join(home, ".cursor", "extensions"))
+
+        # WSL: also search Windows-side VS Code extensions
+        if wsl:
+            for win_home in _get_wsl_windows_homes():
+                search_dirs.append(os.path.join(win_home, ".vscode", "extensions"))
+                search_dirs.append(os.path.join(win_home, ".vscode-server", "extensions"))
+                search_dirs.append(os.path.join(win_home, ".cursor", "extensions"))
 
     found = []
     for ext_dir in search_dirs:
@@ -447,6 +515,8 @@ def show_menu():
 
 def main():
     system_info = f"{platform.system()} {platform.release()}"
+    if _is_wsl():
+        system_info += " (WSL)"
     print(f"System: {system_info}")
 
     extensions = find_claude_extensions()
