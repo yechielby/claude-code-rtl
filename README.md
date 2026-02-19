@@ -71,7 +71,7 @@ Claude Code extension in Anthropic's official VS Code integration doesn't native
 
 ### שלב 1: הורדה
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-code-rtl.git
+git clone https://github.com/yechielby/claude-code-rtl.git
 cd claude-code-rtl
 ```
 
