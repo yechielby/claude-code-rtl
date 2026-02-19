@@ -1,4 +1,4 @@
-# Claude Code RTL for VS Code - RTL Support for Hebrew & Arabic
+# Claude Code in VS Code - RTL Support for Hebrew & Arabic
 
 ---
 
