@@ -309,6 +309,19 @@ def find_claude_extensions():
         search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
         search_dirs.append(os.path.join(home, ".cursor", "extensions"))
 
+        # Also search other users' home directories (e.g. running as root)
+        if os.path.isdir("/home"):
+            try:
+                for user in os.listdir("/home"):
+                    user_home = os.path.join("/home", user)
+                    if user_home == home or not os.path.isdir(user_home):
+                        continue
+                    search_dirs.append(os.path.join(user_home, ".vscode", "extensions"))
+                    search_dirs.append(os.path.join(user_home, ".vscode-server", "extensions"))
+                    search_dirs.append(os.path.join(user_home, ".cursor", "extensions"))
+            except PermissionError:
+                pass
+
         # WSL: also search Windows-side VS Code extensions
         if wsl:
             for win_home in _get_wsl_windows_homes():
