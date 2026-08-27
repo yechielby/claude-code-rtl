@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 "Claude Code in VS Code" - RTL Text Support Script
-Adds RTL (Right-to-Left) text support for the "Claude Code in VS Code" extension (works in VS Code and Cursor)
+Adds RTL (Right-to-Left) text support for the "Claude Code in VS Code" extension (works in VS Code, Cursor, and Kiro)
 
 Approach:
   - Injects CSS into webview/index.css (RTL rules scoped to .YBYrtl class)
@@ -253,6 +253,32 @@ def _get_wsl_windows_homes():
     return homes
 
 
+# Editor data directories that may contain a Claude Code extension install.
+# Each editor has a local dir and a remote counterpart (VS Code Remote / WSL / SSH).
+EDITOR_LABELS = {
+    ".vscode": "VS Code",
+    ".vscode-server": "VS Code (Remote)",
+    ".cursor": "Cursor",
+    ".cursor-server": "Cursor (Remote)",
+    ".kiro": "Kiro",
+    ".kiro-server": "Kiro (Remote)",
+}
+EDITOR_DIRS = tuple(EDITOR_LABELS)
+
+
+def _extension_dirs(home):
+    """Extension search paths for every supported editor under a home directory"""
+    return [os.path.join(home, editor, "extensions") for editor in EDITOR_DIRS]
+
+
+def _editor_label(ext_path):
+    """Name of the editor an extension directory belongs to"""
+    for part in os.path.normpath(ext_path).replace(os.sep, "/").lower().split("/"):
+        if part in EDITOR_LABELS:
+            return EDITOR_LABELS[part]
+    return "Unknown editor"
+
+
 def _get_wsl_linux_homes():
     """Get Linux home directories inside WSL distros, accessible from Windows via \\\\wsl$\\"""
     homes = []
@@ -276,6 +302,10 @@ def _get_wsl_linux_homes():
                         homes.append(user_home)
             except (OSError, PermissionError):
                 continue
+        # Both UNC roots expose the same distros - one working root is enough,
+        # otherwise every WSL extension would be discovered twice.
+        if homes:
+            break
     return homes
 
 
@@ -289,27 +319,17 @@ def find_claude_extensions():
     if system == "windows":
         userprofile = os.getenv("USERPROFILE")
         if userprofile:
-            search_dirs.append(os.path.join(userprofile, ".vscode", "extensions"))
-            search_dirs.append(os.path.join(userprofile, ".vscode-server", "extensions"))
-            search_dirs.append(os.path.join(userprofile, ".cursor", "extensions"))
-            search_dirs.append(os.path.join(userprofile, ".cursor-server", "extensions"))
+            search_dirs.extend(_extension_dirs(userprofile))
 
         # Also search inside WSL distros (\\wsl$\Ubuntu\home\user\...)
         for wsl_home in _get_wsl_linux_homes():
-            search_dirs.append(os.path.join(wsl_home, ".vscode-server", "extensions"))
-            search_dirs.append(os.path.join(wsl_home, ".cursor-server", "extensions"))
+            search_dirs.extend(_extension_dirs(wsl_home))
     elif system == "darwin":
         home = str(Path.home())
-        search_dirs.append(os.path.join(home, ".vscode", "extensions"))
-        search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor-server", "extensions"))
+        search_dirs.extend(_extension_dirs(home))
     elif system == "linux":
         home = str(Path.home())
-        search_dirs.append(os.path.join(home, ".vscode", "extensions"))
-        search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor-server", "extensions"))
+        search_dirs.extend(_extension_dirs(home))
 
         # Also search other users' home directories (e.g. running as root)
         if os.path.isdir("/home"):
@@ -318,20 +338,17 @@ def find_claude_extensions():
                     user_home = os.path.join("/home", user)
                     if user_home == home or not os.path.isdir(user_home):
                         continue
-                    search_dirs.append(os.path.join(user_home, ".vscode", "extensions"))
-                    search_dirs.append(os.path.join(user_home, ".vscode-server", "extensions"))
-                    search_dirs.append(os.path.join(user_home, ".cursor", "extensions"))
-                    search_dirs.append(os.path.join(user_home, ".cursor-server", "extensions"))
+                    search_dirs.extend(_extension_dirs(user_home))
             except PermissionError:
                 pass
 
         # WSL: also search Windows-side VS Code extensions
         if wsl:
             for win_home in _get_wsl_windows_homes():
-                search_dirs.append(os.path.join(win_home, ".vscode", "extensions"))
-                search_dirs.append(os.path.join(win_home, ".vscode-server", "extensions"))
-                search_dirs.append(os.path.join(win_home, ".cursor", "extensions"))
-                search_dirs.append(os.path.join(win_home, ".cursor-server", "extensions"))
+                search_dirs.extend(_extension_dirs(win_home))
+
+    # Homes can overlap between roots; keep first occurrence of each path
+    search_dirs = list(dict.fromkeys(search_dirs))
 
     found = []
     for ext_dir in search_dirs:
@@ -348,7 +365,7 @@ def find_claude_extensions():
                     'dir': match,
                     'css_path': css_path,
                     'js_path': js_path if os.path.exists(js_path) else None,
-                    'name': os.path.basename(match)
+                    'name': _editor_label(match) + " - " + os.path.basename(match)
                 })
 
     return found
@@ -520,14 +537,14 @@ def check_status(extensions):
 
 
 def show_menu():
-    print("\n" + "=" * 55)
-    print("  Claude Code in VS Code - RTL Text Support (+ Cursor)")
-    print("=" * 55)
+    print("\n" + "=" * 63)
+    print("  Claude Code in VS Code - RTL Text Support (+ Cursor + Kiro)")
+    print("=" * 63)
     print("  1. Add RTL support (all versions)")
     print("  2. Remove RTL support (all versions)")
     print("  3. Check status")
     print("  4. Exit")
-    print("=" * 55)
+    print("=" * 63)
 
 
 def main():
@@ -540,7 +557,7 @@ def main():
 
     if not extensions:
         print("\nNo Claude Code extensions found!")
-        print("Make sure the 'Claude Code in VS Code' extension is installed.")
+        print("Make sure the 'Claude Code in VS Code' extension is installed in VS Code, Cursor, or Kiro.")
         input("\nPress Enter to exit...")
         return
 
@@ -554,13 +571,13 @@ def main():
             print("\nAdding RTL support...\n")
             for ext in extensions:
                 add_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / reload window to see changes!")
+            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
 
         elif choice == "2":
             print("\nRemoving RTL support...\n")
             for ext in extensions:
                 remove_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / reload window to see changes!")
+            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
 
         elif choice == "3":
             check_status(extensions)
