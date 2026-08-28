@@ -20,31 +20,49 @@ RTL_CSS_RULES = """
 /* RTL Text Support for Claude Code VS Code / Cursor Extension - Added by script */
 
 /* ==========================================
-   Toggle button - always visible
+   Toggle button - sits in the header next to
+   the history / new-chat buttons
    ========================================== */
 
+/* The button copies the class list of a neighbouring header button, so the
+   extension's own rules supply the box model. Only the glyph and the state
+   colours are set here - defining a width or padding would make the button
+   wider than its neighbours and squeeze them out of a narrow panel. */
 #yby-rtl-btn {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
-    width: 28px;
-    height: 28px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+/* Fallback box, applied only when no native header button was found to copy.
+   Declared before the state rules below so those still win on equal
+   specificity. */
+#yby-rtl-btn.yby-standalone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 4px;
     border: none;
     border-radius: 4px;
-    cursor: pointer;
     background: transparent;
     color: var(--vscode-foreground);
-    opacity: 0.5;
-    transition: opacity 0.2s, background 0.2s;
     flex-shrink: 0;
 }
 
 #yby-rtl-btn:hover {
     opacity: 1;
+    background: var(--app-hover-background, rgba(128, 128, 128, 0.15));
 }
 
 #yby-rtl-btn.yby-active {
     opacity: 1;
-    background: var(--vscode-button-background, rgba(128, 128, 128, 0.3));
+    background: var(--app-secondary-background, rgba(128, 128, 128, 0.3));
+    color: var(--app-primary-foreground, var(--vscode-foreground));
 }
 
 /* ==========================================
@@ -180,31 +198,88 @@ RTL_JS_CODE = """
     var BTN_ID = 'yby-rtl-btn';
     var ROOT_CLASS = 'YBYrtl';
 
-    function tryInsertButton() {
-        if (document.getElementById(BTN_ID)) return;
-        var header = document.querySelector('[class*="header_"]');
-        if (!header) return;
+    /* The history and new-chat buttons in the header are rendered by the
+       extension's shared icon-button component. Anchoring to the last of them
+       puts our button in the same flex row, so nothing is pushed out of view. */
+    function findAnchor() {
+        var headers = document.querySelectorAll('[class*="header_"]');
+        for (var i = 0; i < headers.length; i++) {
+            var header = headers[i];
+            /* Skip per-message headers, which carry icon buttons of their own. */
+            if (header.closest('[class*="messagesContainer_"]')) continue;
+            var buttons = header.querySelectorAll('[class*="iconButton_"]');
+            if (buttons.length) return buttons[buttons.length - 1];
+        }
+        return null;
+    }
 
+    function isRtlOn() {
+        var root = document.getElementById('root');
+        return !!root && root.classList.contains(ROOT_CLASS);
+    }
+
+    function paint(btn) {
+        var active = isRtlOn();
+        btn.classList.toggle('yby-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+
+    function makeButton() {
         var btn = document.createElement('button');
         btn.id = BTN_ID;
+        btn.type = 'button';
         btn.textContent = '\\u21C4';
         btn.title = 'Toggle RTL mode';
-
+        btn.setAttribute('aria-label', 'Toggle RTL mode');
         btn.addEventListener('click', function() {
             var root = document.getElementById('root');
             if (!root) return;
-            var isActive = root.classList.toggle(ROOT_CLASS);
-            btn.classList.toggle('yby-active', isActive);
+            root.classList.toggle(ROOT_CLASS);
+            paint(btn);
         });
-
-        header.appendChild(btn);
+        return btn;
     }
 
-    // Wait for React to render the header
-    var observer = new MutationObserver(function() {
-        tryInsertButton();
+    function tryInsertButton() {
+        if (document.getElementById(BTN_ID)) return;
+
+        var anchor = findAnchor();
+        var btn = makeButton();
+
+        if (anchor) {
+            /* Copy the neighbour's classes so size, padding, hover and colours
+               match the native buttons exactly. */
+            btn.className = anchor.className;
+            anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+        } else {
+            var header = document.querySelector('[class*="header_"]');
+            if (!header) return;
+            btn.classList.add('yby-standalone');
+            header.appendChild(btn);
+        }
+
+        /* A re-render may have dropped an earlier button while RTL was on, so
+           restore the pressed state from the root element rather than assuming
+           the button starts off. */
+        paint(btn);
+    }
+
+    /* React re-renders drop the button, so re-insert on mutation - but coalesce
+       the many mutations a streaming reply fires into one check per frame. */
+    var scheduled = false;
+    function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(function() {
+            scheduled = false;
+            tryInsertButton();
+        });
+    }
+
+    new MutationObserver(schedule).observe(document.body, {
+        childList: true,
+        subtree: true
     });
-    observer.observe(document.body, { childList: true, subtree: true });
 
     if (document.readyState !== 'loading') {
         tryInsertButton();
