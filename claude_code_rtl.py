@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 "Claude Code in VS Code" - RTL Text Support Script
-Adds RTL (Right-to-Left) text support for the "Claude Code in VS Code" extension (works in VS Code and Cursor)
+Adds RTL (Right-to-Left) text support for the "Claude Code in VS Code" extension (works in VS Code, Cursor, and Kiro)
 
 Approach:
   - Injects CSS into webview/index.css (RTL rules scoped to .YBYrtl class)
@@ -20,31 +20,49 @@ RTL_CSS_RULES = """
 /* RTL Text Support for Claude Code VS Code / Cursor Extension - Added by script */
 
 /* ==========================================
-   Toggle button - always visible
+   Toggle button - sits in the header next to
+   the history / new-chat buttons
    ========================================== */
 
+/* The button copies the class list of a neighbouring header button, so the
+   extension's own rules supply the box model. Only the glyph and the state
+   colours are set here - defining a width or padding would make the button
+   wider than its neighbours and squeeze them out of a narrow panel. */
 #yby-rtl-btn {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
-    width: 28px;
-    height: 28px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+/* Fallback box, applied only when no native header button was found to copy.
+   Declared before the state rules below so those still win on equal
+   specificity. */
+#yby-rtl-btn.yby-standalone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 4px;
     border: none;
     border-radius: 4px;
-    cursor: pointer;
     background: transparent;
     color: var(--vscode-foreground);
-    opacity: 0.5;
-    transition: opacity 0.2s, background 0.2s;
     flex-shrink: 0;
 }
 
 #yby-rtl-btn:hover {
     opacity: 1;
+    background: var(--app-hover-background, rgba(128, 128, 128, 0.15));
 }
 
 #yby-rtl-btn.yby-active {
     opacity: 1;
-    background: var(--vscode-button-background, rgba(128, 128, 128, 0.3));
+    background: var(--app-secondary-background, rgba(128, 128, 128, 0.3));
+    color: var(--app-primary-foreground, var(--vscode-foreground));
 }
 
 /* ==========================================
@@ -180,31 +198,88 @@ RTL_JS_CODE = """
     var BTN_ID = 'yby-rtl-btn';
     var ROOT_CLASS = 'YBYrtl';
 
-    function tryInsertButton() {
-        if (document.getElementById(BTN_ID)) return;
-        var header = document.querySelector('[class*="header_"]');
-        if (!header) return;
+    /* The history and new-chat buttons in the header are rendered by the
+       extension's shared icon-button component. Anchoring to the last of them
+       puts our button in the same flex row, so nothing is pushed out of view. */
+    function findAnchor() {
+        var headers = document.querySelectorAll('[class*="header_"]');
+        for (var i = 0; i < headers.length; i++) {
+            var header = headers[i];
+            /* Skip per-message headers, which carry icon buttons of their own. */
+            if (header.closest('[class*="messagesContainer_"]')) continue;
+            var buttons = header.querySelectorAll('[class*="iconButton_"]');
+            if (buttons.length) return buttons[buttons.length - 1];
+        }
+        return null;
+    }
 
+    function isRtlOn() {
+        var root = document.getElementById('root');
+        return !!root && root.classList.contains(ROOT_CLASS);
+    }
+
+    function paint(btn) {
+        var active = isRtlOn();
+        btn.classList.toggle('yby-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+
+    function makeButton() {
         var btn = document.createElement('button');
         btn.id = BTN_ID;
+        btn.type = 'button';
         btn.textContent = '\\u21C4';
         btn.title = 'Toggle RTL mode';
-
+        btn.setAttribute('aria-label', 'Toggle RTL mode');
         btn.addEventListener('click', function() {
             var root = document.getElementById('root');
             if (!root) return;
-            var isActive = root.classList.toggle(ROOT_CLASS);
-            btn.classList.toggle('yby-active', isActive);
+            root.classList.toggle(ROOT_CLASS);
+            paint(btn);
         });
-
-        header.appendChild(btn);
+        return btn;
     }
 
-    // Wait for React to render the header
-    var observer = new MutationObserver(function() {
-        tryInsertButton();
+    function tryInsertButton() {
+        if (document.getElementById(BTN_ID)) return;
+
+        var anchor = findAnchor();
+        var btn = makeButton();
+
+        if (anchor) {
+            /* Copy the neighbour's classes so size, padding, hover and colours
+               match the native buttons exactly. */
+            btn.className = anchor.className;
+            anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+        } else {
+            var header = document.querySelector('[class*="header_"]');
+            if (!header) return;
+            btn.classList.add('yby-standalone');
+            header.appendChild(btn);
+        }
+
+        /* A re-render may have dropped an earlier button while RTL was on, so
+           restore the pressed state from the root element rather than assuming
+           the button starts off. */
+        paint(btn);
+    }
+
+    /* React re-renders drop the button, so re-insert on mutation - but coalesce
+       the many mutations a streaming reply fires into one check per frame. */
+    var scheduled = false;
+    function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(function() {
+            scheduled = false;
+            tryInsertButton();
+        });
+    }
+
+    new MutationObserver(schedule).observe(document.body, {
+        childList: true,
+        subtree: true
     });
-    observer.observe(document.body, { childList: true, subtree: true });
 
     if (document.readyState !== 'loading') {
         tryInsertButton();
@@ -253,6 +328,32 @@ def _get_wsl_windows_homes():
     return homes
 
 
+# Editor data directories that may contain a Claude Code extension install.
+# Each editor has a local dir and a remote counterpart (VS Code Remote / WSL / SSH).
+EDITOR_LABELS = {
+    ".vscode": "VS Code",
+    ".vscode-server": "VS Code (Remote)",
+    ".cursor": "Cursor",
+    ".cursor-server": "Cursor (Remote)",
+    ".kiro": "Kiro",
+    ".kiro-server": "Kiro (Remote)",
+}
+EDITOR_DIRS = tuple(EDITOR_LABELS)
+
+
+def _extension_dirs(home):
+    """Extension search paths for every supported editor under a home directory"""
+    return [os.path.join(home, editor, "extensions") for editor in EDITOR_DIRS]
+
+
+def _editor_label(ext_path):
+    """Name of the editor an extension directory belongs to"""
+    for part in os.path.normpath(ext_path).replace(os.sep, "/").lower().split("/"):
+        if part in EDITOR_LABELS:
+            return EDITOR_LABELS[part]
+    return "Unknown editor"
+
+
 def _get_wsl_linux_homes():
     """Get Linux home directories inside WSL distros, accessible from Windows via \\\\wsl$\\"""
     homes = []
@@ -276,6 +377,10 @@ def _get_wsl_linux_homes():
                         homes.append(user_home)
             except (OSError, PermissionError):
                 continue
+        # Both UNC roots expose the same distros - one working root is enough,
+        # otherwise every WSL extension would be discovered twice.
+        if homes:
+            break
     return homes
 
 
@@ -289,27 +394,17 @@ def find_claude_extensions():
     if system == "windows":
         userprofile = os.getenv("USERPROFILE")
         if userprofile:
-            search_dirs.append(os.path.join(userprofile, ".vscode", "extensions"))
-            search_dirs.append(os.path.join(userprofile, ".vscode-server", "extensions"))
-            search_dirs.append(os.path.join(userprofile, ".cursor", "extensions"))
-            search_dirs.append(os.path.join(userprofile, ".cursor-server", "extensions"))
+            search_dirs.extend(_extension_dirs(userprofile))
 
         # Also search inside WSL distros (\\wsl$\Ubuntu\home\user\...)
         for wsl_home in _get_wsl_linux_homes():
-            search_dirs.append(os.path.join(wsl_home, ".vscode-server", "extensions"))
-            search_dirs.append(os.path.join(wsl_home, ".cursor-server", "extensions"))
+            search_dirs.extend(_extension_dirs(wsl_home))
     elif system == "darwin":
         home = str(Path.home())
-        search_dirs.append(os.path.join(home, ".vscode", "extensions"))
-        search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor-server", "extensions"))
+        search_dirs.extend(_extension_dirs(home))
     elif system == "linux":
         home = str(Path.home())
-        search_dirs.append(os.path.join(home, ".vscode", "extensions"))
-        search_dirs.append(os.path.join(home, ".vscode-server", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor", "extensions"))
-        search_dirs.append(os.path.join(home, ".cursor-server", "extensions"))
+        search_dirs.extend(_extension_dirs(home))
 
         # Also search other users' home directories (e.g. running as root)
         if os.path.isdir("/home"):
@@ -318,20 +413,17 @@ def find_claude_extensions():
                     user_home = os.path.join("/home", user)
                     if user_home == home or not os.path.isdir(user_home):
                         continue
-                    search_dirs.append(os.path.join(user_home, ".vscode", "extensions"))
-                    search_dirs.append(os.path.join(user_home, ".vscode-server", "extensions"))
-                    search_dirs.append(os.path.join(user_home, ".cursor", "extensions"))
-                    search_dirs.append(os.path.join(user_home, ".cursor-server", "extensions"))
+                    search_dirs.extend(_extension_dirs(user_home))
             except PermissionError:
                 pass
 
         # WSL: also search Windows-side VS Code extensions
         if wsl:
             for win_home in _get_wsl_windows_homes():
-                search_dirs.append(os.path.join(win_home, ".vscode", "extensions"))
-                search_dirs.append(os.path.join(win_home, ".vscode-server", "extensions"))
-                search_dirs.append(os.path.join(win_home, ".cursor", "extensions"))
-                search_dirs.append(os.path.join(win_home, ".cursor-server", "extensions"))
+                search_dirs.extend(_extension_dirs(win_home))
+
+    # Homes can overlap between roots; keep first occurrence of each path
+    search_dirs = list(dict.fromkeys(search_dirs))
 
     found = []
     for ext_dir in search_dirs:
@@ -348,7 +440,7 @@ def find_claude_extensions():
                     'dir': match,
                     'css_path': css_path,
                     'js_path': js_path if os.path.exists(js_path) else None,
-                    'name': os.path.basename(match)
+                    'name': _editor_label(match) + " - " + os.path.basename(match)
                 })
 
     return found
@@ -520,14 +612,14 @@ def check_status(extensions):
 
 
 def show_menu():
-    print("\n" + "=" * 55)
-    print("  Claude Code in VS Code - RTL Text Support (+ Cursor)")
-    print("=" * 55)
+    print("\n" + "=" * 63)
+    print("  Claude Code in VS Code - RTL Text Support (+ Cursor + Kiro)")
+    print("=" * 63)
     print("  1. Add RTL support (all versions)")
     print("  2. Remove RTL support (all versions)")
     print("  3. Check status")
     print("  4. Exit")
-    print("=" * 55)
+    print("=" * 63)
 
 
 def main():
@@ -540,7 +632,7 @@ def main():
 
     if not extensions:
         print("\nNo Claude Code extensions found!")
-        print("Make sure the 'Claude Code in VS Code' extension is installed.")
+        print("Make sure the 'Claude Code in VS Code' extension is installed in VS Code, Cursor, or Kiro.")
         input("\nPress Enter to exit...")
         return
 
@@ -554,13 +646,13 @@ def main():
             print("\nAdding RTL support...\n")
             for ext in extensions:
                 add_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / reload window to see changes!")
+            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
 
         elif choice == "2":
             print("\nRemoving RTL support...\n")
             for ext in extensions:
                 remove_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / reload window to see changes!")
+            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
 
         elif choice == "3":
             check_status(extensions)
