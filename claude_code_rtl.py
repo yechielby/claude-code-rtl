@@ -446,150 +446,130 @@ def find_claude_extensions():
     return found
 
 
-def is_rtl_installed(css_path):
-    """Check if RTL CSS is already injected"""
+def _read(path):
+    # newline='' keeps the file's own line endings; text mode would otherwise
+    # rewrite every LF in the bundle as CRLF on Windows.
+    with open(path, 'r', encoding='utf-8', newline='') as f:
+        return f.read()
+
+
+def _write(path, content):
+    with open(path, 'w', encoding='utf-8', newline='') as f:
+        f.write(content)
+
+
+def _has_marker(path, marker):
+    if not path:
+        return False
     try:
-        with open(css_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return RTL_START_MARKER in content
+        return marker in _read(path)
     except Exception:
         return False
+
+
+def is_rtl_installed(css_path):
+    """Check if RTL CSS is already injected"""
+    return _has_marker(css_path, RTL_START_MARKER)
 
 
 def is_js_installed(js_path):
     """Check if RTL JS button is already injected"""
-    if not js_path:
-        return False
-    try:
-        with open(js_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return JS_START_MARKER in content
-    except Exception:
-        return False
-
-
-def add_rtl_support(ext_info):
-    """Add RTL CSS and JS toggle button to a Claude Code extension"""
-    css_path = ext_info['css_path']
-    js_path = ext_info['js_path']
-
-    # --- CSS ---
-    if is_rtl_installed(css_path):
-        print(f"  CSS: RTL already installed in {ext_info['name']}")
-    else:
-        try:
-            backup_path = css_path + '.bak'
-            if not os.path.exists(backup_path):
-                shutil.copy2(css_path, backup_path)
-                print(f"  CSS: Backup created: {backup_path}")
-
-            with open(css_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            with open(css_path, 'w', encoding='utf-8') as f:
-                f.write(content + "\n" + RTL_CSS_RULES)
-
-            print(f"  CSS: RTL support added to {ext_info['name']}")
-        except PermissionError:
-            print(f"  CSS: Permission denied: {css_path}")
-            print(f"       Try running with elevated privileges")
-        except Exception as e:
-            print(f"  CSS: Error: {e}")
-
-    # --- JS ---
-    if not js_path:
-        print(f"  JS:  index.js not found, skipping button injection")
-        return
-
-    if is_js_installed(js_path):
-        print(f"  JS:  Button already installed in {ext_info['name']}")
-    else:
-        try:
-            backup_path = js_path + '.bak'
-            if not os.path.exists(backup_path):
-                shutil.copy2(js_path, backup_path)
-                print(f"  JS:  Backup created: {backup_path}")
-
-            with open(js_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            with open(js_path, 'w', encoding='utf-8') as f:
-                f.write(content + "\n" + RTL_JS_CODE)
-
-            print(f"  JS:  Toggle button added to {ext_info['name']}")
-        except PermissionError:
-            print(f"  JS:  Permission denied: {js_path}")
-            print(f"       Try running with elevated privileges")
-        except Exception as e:
-            print(f"  JS:  Error: {e}")
+    return _has_marker(js_path, JS_START_MARKER)
 
 
 def _strip_block(content, start_marker, end_marker):
     """Remove a marked block from content string"""
     start_idx = content.find(start_marker)
-    end_idx = content.find(end_marker)
-    if start_idx == -1 or end_idx == -1:
+    if start_idx == -1:
+        return content
+    end_idx = content.find(end_marker, start_idx)
+    if end_idx == -1:
         return content
     end_idx += len(end_marker)
-    if start_idx > 0 and content[start_idx - 1] == '\n':
-        start_idx -= 1
+    # _inject appends "\n" + block, and each block opens and closes with a
+    # newline - take those back too so a strip leaves the file as it was.
+    for _ in range(2):
+        if start_idx > 0 and content[start_idx - 1] == '\n':
+            start_idx -= 1
+    if content[end_idx:end_idx + 1] == '\n':
+        end_idx += 1
     return content[:start_idx] + content[end_idx:]
 
 
+def _inject(path, block, start_marker, end_marker, label, name):
+    """Append block to path, or replace an outdated copy of it. Returns success."""
+    try:
+        content = _read(path)
+        if start_marker in content:
+            if block in content:
+                print(f"  {label} Already up to date in {name}")
+                return True
+            # Injected by an older version of this script - swap in the current
+            # block. The existing .bak still holds the untouched original.
+            content = _strip_block(content, start_marker, end_marker)
+            _write(path, content + "\n" + block)
+            print(f"  {label} Updated to the latest version in {name}")
+            return True
+
+        backup_path = path + '.bak'
+        if not os.path.exists(backup_path):
+            shutil.copy2(path, backup_path)
+            print(f"  {label} Backup created: {backup_path}")
+        _write(path, content + "\n" + block)
+        print(f"  {label} Added to {name}")
+        return True
+    except PermissionError:
+        print(f"  {label} Permission denied: {path}")
+        print(f"       Try running with elevated privileges")
+    except Exception as e:
+        print(f"  {label} Error: {e}")
+    return False
+
+
+def _remove(path, start_marker, end_marker, label, name):
+    """Restore path from its .bak, or strip the block if that fails. Returns success."""
+    if not _has_marker(path, start_marker):
+        print(f"  {label} Not installed in {name}")
+        return True
+
+    backup_path = path + '.bak'
+    if os.path.exists(backup_path):
+        try:
+            shutil.copy2(backup_path, path)
+            os.remove(backup_path)
+            print(f"  {label} Restored from backup: {name}")
+            return True
+        except Exception as e:
+            print(f"  {label} Backup restore failed: {e}, trying manual removal...")
+
+    try:
+        _write(path, _strip_block(_read(path), start_marker, end_marker))
+        print(f"  {label} Removed from {name}")
+        return True
+    except Exception as e:
+        print(f"  {label} Error removing: {e}")
+    return False
+
+
+def add_rtl_support(ext_info):
+    """Add RTL CSS and JS toggle button to a Claude Code extension. Returns success."""
+    name = ext_info['name']
+    ok = _inject(ext_info['css_path'], RTL_CSS_RULES,
+                 RTL_START_MARKER, RTL_END_MARKER, "CSS:", name)
+    if not ext_info['js_path']:
+        print(f"  JS:  index.js not found, skipping button injection")
+        return ok
+    return _inject(ext_info['js_path'], RTL_JS_CODE,
+                   JS_START_MARKER, JS_END_MARKER, "JS: ", name) and ok
+
+
 def remove_rtl_support(ext_info):
-    """Remove RTL CSS and JS toggle button from a Claude Code extension"""
-    css_path = ext_info['css_path']
-    js_path = ext_info['js_path']
-
-    # --- CSS ---
-    if not is_rtl_installed(css_path):
-        print(f"  CSS: RTL not installed in {ext_info['name']}")
-    else:
-        backup_path = css_path + '.bak'
-        restored = False
-        if os.path.exists(backup_path):
-            try:
-                shutil.copy2(backup_path, css_path)
-                os.remove(backup_path)
-                print(f"  CSS: Restored from backup: {ext_info['name']}")
-                restored = True
-            except Exception as e:
-                print(f"  CSS: Backup restore failed: {e}, trying manual removal...")
-
-        if not restored:
-            try:
-                with open(css_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                cleaned = _strip_block(content, RTL_START_MARKER, RTL_END_MARKER)
-                with open(css_path, 'w', encoding='utf-8') as f:
-                    f.write(cleaned)
-                print(f"  CSS: RTL removed from {ext_info['name']}")
-            except Exception as e:
-                print(f"  CSS: Error removing RTL: {e}")
-
-    # --- JS ---
-    if not js_path or not is_js_installed(js_path):
-        print(f"  JS:  Button not installed in {ext_info['name']}")
-    else:
-        backup_path = js_path + '.bak'
-        restored = False
-        if os.path.exists(backup_path):
-            try:
-                shutil.copy2(backup_path, js_path)
-                os.remove(backup_path)
-                print(f"  JS:  Restored from backup: {ext_info['name']}")
-                restored = True
-            except Exception as e:
-                print(f"  JS:  Backup restore failed: {e}, trying manual removal...")
-
-        if not restored:
-            try:
-                with open(js_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                cleaned = _strip_block(content, JS_START_MARKER, JS_END_MARKER)
-                with open(js_path, 'w', encoding='utf-8') as f:
-                    f.write(cleaned)
-                print(f"  JS:  Toggle button removed from {ext_info['name']}")
-            except Exception as e:
-                print(f"  JS:  Error removing button: {e}")
+    """Remove RTL CSS and JS toggle button from a Claude Code extension. Returns success."""
+    name = ext_info['name']
+    ok = _remove(ext_info['css_path'], RTL_START_MARKER, RTL_END_MARKER, "CSS:", name)
+    if not ext_info['js_path']:
+        return ok
+    return _remove(ext_info['js_path'], JS_START_MARKER, JS_END_MARKER, "JS: ", name) and ok
 
 
 def check_status(extensions):
@@ -622,7 +602,25 @@ def show_menu():
     print("=" * 63)
 
 
+USAGE = "Usage: python claude_code_rtl.py [--apply | --remove | --status]"
+
+
+def _run_all(action, verb, extensions):
+    """Run action on every extension. Returns True only if all succeeded."""
+    print(f"\n{verb} RTL support...\n")
+    results = [action(ext) for ext in extensions]
+    print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
+    return all(results)
+
+
 def main():
+    """Returns the process exit code."""
+    args = sys.argv[1:]
+    flag = args[0] if args else None
+    if len(args) > 1 or flag not in (None, "--apply", "--remove", "--status"):
+        print(USAGE)
+        return 0 if flag in ("-h", "--help") else 2
+
     system_info = f"{platform.system()} {platform.release()}"
     if _is_wsl():
         system_info += " (WSL)"
@@ -633,51 +631,36 @@ def main():
     if not extensions:
         print("\nNo Claude Code extensions found!")
         print("Make sure the 'Claude Code in VS Code' extension is installed in VS Code, Cursor, or Kiro.")
-        input("\nPress Enter to exit...")
-        return
+        if not flag:
+            input("\nPress Enter to exit...")
+        return 1
 
     print(f"Found {len(extensions)} extension(s)")
-    
-    # Auto-apply mode when command line argument is provided
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "--apply":
-            print("\nAdding RTL support...\n")
-            for ext in extensions:
-                add_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
-            return
-        elif sys.argv[1] == "--remove":
-            print("\nRemoving RTL support...\n")
-            for ext in extensions:
-                remove_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
-            return
-        elif sys.argv[1] == "--status":
-            check_status(extensions)
-            return
+
+    if flag == "--apply":
+        return 0 if _run_all(add_rtl_support, "Adding", extensions) else 1
+    if flag == "--remove":
+        return 0 if _run_all(remove_rtl_support, "Removing", extensions) else 1
+    if flag == "--status":
+        check_status(extensions)
+        return 0
 
     while True:
         show_menu()
         choice = input("\n  Select option (1-4): ").strip()
 
         if choice == "1":
-            print("\nAdding RTL support...\n")
-            for ext in extensions:
-                add_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
+            _run_all(add_rtl_support, "Adding", extensions)
 
         elif choice == "2":
-            print("\nRemoving RTL support...\n")
-            for ext in extensions:
-                remove_rtl_support(ext)
-            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
+            _run_all(remove_rtl_support, "Removing", extensions)
 
         elif choice == "3":
             check_status(extensions)
 
         elif choice == "4":
             print("\nGoodbye!")
-            break
+            return 0
         else:
             print("\nInvalid choice")
 
@@ -686,9 +669,13 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        sys.exit(main())
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
+        sys.exit(130)
     except Exception as e:
         print(f"\nError: {e}")
-        input("Press Enter to close...")
+        # Keep a double-clicked console window open, but never block a script.
+        if len(sys.argv) == 1 and sys.stdin.isatty():
+            input("Press Enter to close...")
+        sys.exit(1)

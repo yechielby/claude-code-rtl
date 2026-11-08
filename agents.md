@@ -174,7 +174,7 @@ If user needs:
 
 ### For Autonomous Tools
 - **CLI Integration:** Can be called via `python claude_code_rtl.py`
-- **Automation:** Supports options 1 & 2 for install/uninstall
+- **Automation:** `--apply`, `--remove` and `--status` run without the menu; exit code is 0 on success, 1 on failure, 2 on an unknown flag
 - **Parsing:** Backup mechanism ensures safety for automated deployments
 
 ---
