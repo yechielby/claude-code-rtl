@@ -637,6 +637,24 @@ def main():
         return
 
     print(f"Found {len(extensions)} extension(s)")
+    
+    # Auto-apply mode when command line argument is provided
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--apply":
+            print("\nAdding RTL support...\n")
+            for ext in extensions:
+                add_rtl_support(ext)
+            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
+            return
+        elif sys.argv[1] == "--remove":
+            print("\nRemoving RTL support...\n")
+            for ext in extensions:
+                remove_rtl_support(ext)
+            print("\nRestart VS Code / Cursor / Kiro / reload window to see changes!")
+            return
+        elif sys.argv[1] == "--status":
+            check_status(extensions)
+            return
 
     while True:
         show_menu()
