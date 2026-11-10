@@ -189,14 +189,342 @@ RTL_CSS_RULES = """
     text-align: left !important;
 }
 
+/* ==========================================
+   Translated menus and dialogs - the toggle script sets dir on them
+   ========================================== */
+
+/* The extension hard-codes left alignment on menu items */
+[class*="popupOption_"][dir="rtl"] {
+    text-align: right;
+}
+
+/* Agent map rows: the extension hard-codes left alignment, and indents the
+   meta line on the left to sit under the title text */
+[role="dialog"] [class*="row_"][dir="rtl"] {
+    text-align: right;
+}
+
+[role="dialog"] [class*="row_"][dir="rtl"] [class*="rowMeta_"] {
+    padding-left: 0;
+    padding-right: 14px;
+}
+
+/* Agent map tree: the connector lines are placed with left offsets - mirror
+   them so they still join the main row to its agents */
+[role="dialog"][dir="rtl"] [class*="children_"] {
+    margin-left: 0;
+    margin-right: 32px;
+}
+
+[role="dialog"][dir="rtl"] [class*="children_"]::before {
+    left: auto;
+    right: -32px;
+}
+
+[role="dialog"][dir="rtl"] [class*="child_"]::before,
+[role="dialog"][dir="rtl"] [class*="child_"]::after {
+    left: auto;
+    right: -16px;
+}
+
+[role="dialog"][dir="rtl"] [class*="rowMain_"]::after {
+    left: auto;
+    right: calc(100% + 1px);
+}
+
+/* Rewind dialog: file paths stay left-to-right */
+[role="dialog"][dir="rtl"] [class*="fileItem_"] {
+    direction: ltr;
+    text-align: left;
+}
+
 /* End RTL Text Support for Claude Code VS Code / Cursor Extension */
 """
 
-RTL_JS_CODE = """
+RTL_JS_CODE = r"""
 /* RTL Toggle Button - Added by script */
 (function() {
     var BTN_ID = 'yby-rtl-btn';
     var ROOT_CLASS = 'YBYrtl';
+    var STORAGE_KEY = 'yby-rtl-enabled';
+
+    /* ------------------------------------------------------------------
+       Translation of fixed UI strings
+       ------------------------------------------------------------------ */
+
+    /* Applied only while RTL mode is on. The language follows the
+       conversation: whichever of Arabic or Hebrew the user writes in. A string
+       missing here, or reworded by an extension update, stays in English.
+       Each language has one table per scope (see SCOPES). */
+    var STRINGS = {
+        ar: {
+            ui: {
+                /* Message action menu */
+                'Fork conversation from here': 'تفريع المحادثة من هنا',
+                'Rewind code to here': 'إرجاع الكود إلى هذه النقطة',
+                'Fork conversation and rewind code': 'تفريع المحادثة وإرجاع الكود',
+                /* Rewind confirmation dialog */
+                'Rewind': 'إرجاع',
+                'Rewind code': 'إرجاع الكود',
+                'Fork and rewind': 'تفريع وإرجاع',
+                'Restore': 'استعادة',
+                'Continue': 'متابعة',
+                'Never mind': 'إلغاء',
+                'A new forked conversation will be created after rewinding.': 'ستُنشأ محادثة مفرّعة جديدة بعد الإرجاع.',
+                'Checking code changes…': 'جارٍ فحص تغييرات الكود…',
+                'Restored files go back whole, losing later changes by anyone. Bash changes to other files are not undone.':
+                    'تُستعاد الملفات كاملة، فتضيع أي تغييرات لاحقة عليها مهما كان مصدرها. ولا تُلغى تغييرات أوامر Bash على الملفات الأخرى.',
+                'Restore code and conversation': 'استعادة الكود والمحادثة',
+                'Restore conversation': 'استعادة المحادثة',
+                'Restore code': 'استعادة الكود',
+                'The conversation will be forked.': 'ستُفرَّع المحادثة.',
+                'The conversation will be forked. The code will be unchanged.': 'ستُفرَّع المحادثة، ولن يتغير الكود.',
+                'The conversation will be unchanged.': 'لن تتغير المحادثة.',
+                'The code ': 'الكود ',
+                'has not changed': 'لم يتغير',
+                ', so no code will be restored.': '، لذلك لن يُستعاد أي كود.',
+                /* Agent map dialog */
+                'Agent map': 'خريطة الوكلاء',
+                'This session': 'هذه الجلسة'
+            },
+            /* "3 lines will be removed and 5 lines will be added across 2 files:" -
+               the extension builds it from fragments around the numbers. */
+            summary: {
+                ' line': ' سطر',
+                's': '',
+                'will be removed and': 'سيُحذف و',
+                'will be added across ': 'سيُضاف في ',
+                ' file': ' ملف'
+            },
+            /* "10 agents · click an agent for details" */
+            agents: {
+                'agent': 'وكيل',
+                'agents': 'وكلاء',
+                ' · click an agent for details': ' · اضغط على وكيل لعرض تفاصيله'
+            },
+            /* "2m 23s · 80.0k tokens", "345.6k tokens in context" */
+            tokens: [
+                [/ tokens in context$/, ' توكن في السياق'],
+                [/ tokens$/, ' توكن']
+            ]
+        },
+        he: {
+            ui: {
+                'Fork conversation from here': 'פיצול השיחה מכאן',
+                'Rewind code to here': 'החזרת הקוד לנקודה זו',
+                'Fork conversation and rewind code': 'פיצול השיחה והחזרת הקוד',
+                'Rewind': 'החזרה',
+                'Rewind code': 'החזרת הקוד',
+                'Fork and rewind': 'פיצול והחזרה',
+                'Restore': 'שחזור',
+                'Continue': 'המשך',
+                'Never mind': 'ביטול',
+                'A new forked conversation will be created after rewinding.': 'לאחר ההחזרה תיווצר שיחה מפוצלת חדשה.',
+                'Checking code changes…': 'בודק שינויים בקוד…',
+                'Restored files go back whole, losing later changes by anyone. Bash changes to other files are not undone.':
+                    'קבצים משוחזרים חוזרים במלואם, וכל שינוי מאוחר יותר בהם יאבד, לא משנה מי ביצע אותו. שינויים של Bash בקבצים אחרים אינם מבוטלים.',
+                'Restore code and conversation': 'שחזור הקוד והשיחה',
+                'Restore conversation': 'שחזור השיחה',
+                'Restore code': 'שחזור הקוד',
+                'The conversation will be forked.': 'השיחה תפוצל.',
+                'The conversation will be forked. The code will be unchanged.': 'השיחה תפוצל. הקוד לא ישתנה.',
+                'The conversation will be unchanged.': 'השיחה לא תשתנה.',
+                'The code ': 'הקוד ',
+                'has not changed': 'לא השתנה',
+                ', so no code will be restored.': ', ולכן שום קוד לא ישוחזר.',
+                'Agent map': 'מפת סוכנים',
+                'This session': 'הסשן הנוכחי'
+            },
+            summary: {
+                ' line': ' שורות',
+                's': '',
+                'will be removed and': 'יוסרו ו-',
+                'will be added across ': 'יתווספו ב-',
+                ' file': ' קבצים'
+            },
+            agents: {
+                'agent': 'סוכן',
+                'agents': 'סוכנים',
+                ' · click an agent for details': ' · לחצו על סוכן לפרטים'
+            },
+            tokens: [
+                [/ tokens in context$/, ' טוקנים בהקשר'],
+                [/ tokens$/, ' טוקנים']
+            ]
+        }
+    };
+
+    /* The only places text is ever replaced, each with the table it uses.
+       Messages, code and file names are outside all of them. */
+    var SCOPES = [
+        ['[class*="popupOption_"]', 'ui'],
+        ['[role="dialog"] h3', 'ui'],
+        ['[role="dialog"] [class*="actions_"] button', 'ui'],
+        ['[role="dialog"] [class*="forkNote_"]', 'ui'],
+        ['[role="dialog"] [class*="loading_"]', 'ui'],
+        ['[role="dialog"] [class*="warning_"]', 'ui'],
+        ['[role="dialog"] [class*="choiceGroup_"]', 'ui'],
+        ['[role="dialog"] [class*="noChanges_"]', 'ui'],
+        ['[role="dialog"] [class*="summary_"]', 'summary'],
+        ['[role="dialog"] [class*="subtitle_"]', 'agents'],
+        ['[role="dialog"] [class*="rowMain_"] [class*="rowTitle_"]', 'ui'],
+        ['[role="dialog"] [class*="rowMeta_"]', 'tokens']
+    ];
+
+    /* Dialogs whose layout follows the translation: right-to-left when
+       translated, left-to-right otherwise (they would inherit RTL from the
+       chat and scramble English text). Keyed by their English title. */
+    var DIALOG_TITLES = {
+        'Agent map': true,
+        'Rewind': true,
+        'Rewind code': true,
+        'Fork and rewind': true
+    };
+
+    var WATCHED = '[class*="popupOption_"], [role="dialog"]';
+
+    /* Text node -> {en, tr}: the English it had and what we replaced it with.
+       Lets a node be translated again, or restored, without losing the
+       original - and spots when the extension has written new text into it. */
+    var originals = new WeakMap();
+    var touched = false;
+
+    function lookup(text, table) {
+        if (Array.isArray(table)) {
+            for (var i = 0; i < table.length; i++) {
+                if (table[i][0].test(text)) return text.replace(table[i][0], table[i][1]);
+            }
+            return text;
+        }
+        if (Object.prototype.hasOwnProperty.call(table, text)) return table[text];
+        /* Match ignoring surrounding whitespace, but keep that whitespace. */
+        var m = /^(\s*)([\s\S]*?)(\s*)$/.exec(text);
+        if (m[2] && Object.prototype.hasOwnProperty.call(table, m[2])) {
+            return m[1] + table[m[2]] + m[3];
+        }
+        return text;
+    }
+
+    /* The English a text node holds, even if we have translated it. */
+    function sourceOf(node) {
+        var seen = originals.get(node);
+        return seen && node.nodeValue === seen.tr ? seen.en : node.nodeValue;
+    }
+
+    function sourceText(el) {
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        var text = '', node;
+        while ((node = walker.nextNode())) text += sourceOf(node);
+        return text;
+    }
+
+    /* Translate el's text with table, or restore English when table is null.
+       Only nodeValue is changed, so the extension keeps the same text nodes it
+       rendered and can still update them. */
+    function localizeTree(el, table) {
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        var node;
+        while ((node = walker.nextNode())) {
+            var source = sourceOf(node);
+            var text = table ? lookup(source, table) : source;
+            if (text === node.nodeValue) continue;
+            originals.set(node, { en: source, tr: text });
+            node.nodeValue = text;
+            touched = true;
+        }
+    }
+
+    function localize(lang) {
+        for (var i = 0; i < SCOPES.length; i++) {
+            var table = lang ? STRINGS[lang][SCOPES[i][1]] : null;
+            var els = document.querySelectorAll(SCOPES[i][0]);
+            for (var j = 0; j < els.length; j++) localizeTree(els[j], table);
+        }
+    }
+
+    /* Direction of the first letter in text: 'rtl', 'ltr', or null. */
+    function textDir(text) {
+        var m = /[A-Za-zÀ-ɏ֐-ࣿ]/.exec(text);
+        if (!m) return null;
+        return /[֐-ࣿ]/.test(m[0]) ? 'rtl' : 'ltr';
+    }
+
+    /* Set dir on an element, marking it so it can be cleaned up; null removes
+       a dir this script set and leaves any other alone. */
+    function setDir(el, dir) {
+        if (!dir) {
+            if (el.hasAttribute('data-yby-dir')) {
+                el.removeAttribute('dir');
+                el.removeAttribute('data-yby-dir');
+            }
+            return;
+        }
+        if (el.getAttribute('dir') !== dir) el.setAttribute('dir', dir);
+        if (!el.hasAttribute('data-yby-dir')) el.setAttribute('data-yby-dir', '');
+        touched = true;
+    }
+
+    function orient(on, lang) {
+        var i;
+        if (!on) {
+            var marked = document.querySelectorAll('[data-yby-dir]');
+            for (i = 0; i < marked.length; i++) setDir(marked[i], null);
+            return;
+        }
+        var options = document.querySelectorAll('[class*="popupOption_"]');
+        for (i = 0; i < options.length; i++) setDir(options[i], lang ? 'rtl' : null);
+
+        var dialogs = document.querySelectorAll('[role="dialog"]');
+        for (i = 0; i < dialogs.length; i++) {
+            var title = dialogs[i].querySelector('h3');
+            if (!title || !DIALOG_TITLES[sourceText(title).trim()]) continue;
+            setDir(dialogs[i], lang ? 'rtl' : 'ltr');
+            /* Agent rows hold free text (task names) - lay each one out in
+               the direction of its own text. */
+            var rows = dialogs[i].querySelectorAll('[class*="rowTitle_"]');
+            for (var j = 0; j < rows.length; j++) {
+                setDir(rows[j].parentNode, textDir(rows[j].textContent));
+            }
+        }
+    }
+
+    /* Arabic or Hebrew, by which script the user's messages use most; falls
+       back to the editor's display language. Re-checked at most once a second. */
+    var langCache = null, langCheckedAt = 0;
+    function conversationLang() {
+        var now = Date.now();
+        if (now - langCheckedAt < 1000) return langCache;
+        langCheckedAt = now;
+        var text = '';
+        var msgs = document.querySelectorAll('[class*="userMessage_"]');
+        for (var i = 0; i < msgs.length; i++) text += msgs[i].textContent;
+        var ar = (text.match(/[؀-ۿ]/g) || []).length;
+        var he = (text.match(/[֐-׿]/g) || []).length;
+        if (ar || he) {
+            langCache = ar >= he ? 'ar' : 'he';
+        } else {
+            var ui = (navigator.language || '').slice(0, 2).toLowerCase();
+            langCache = STRINGS[ui] ? ui : null;
+        }
+        return langCache;
+    }
+
+    /* ------------------------------------------------------------------
+       RTL state and toggle button
+       ------------------------------------------------------------------ */
+
+    function loadState() {
+        try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function saveState(on) {
+        try { localStorage.setItem(STORAGE_KEY, on ? '1' : '0'); } catch (e) { /* not available */ }
+    }
+
+    /* Skip headers that belong to a message or to a dialog. */
+    function isMainHeader(header) {
+        return !header.closest('[class*="messagesContainer_"], [role="dialog"]');
+    }
 
     /* The history and new-chat buttons in the header are rendered by the
        extension's shared icon-button component. Anchoring to the last of them
@@ -204,11 +532,17 @@ RTL_JS_CODE = """
     function findAnchor() {
         var headers = document.querySelectorAll('[class*="header_"]');
         for (var i = 0; i < headers.length; i++) {
-            var header = headers[i];
-            /* Skip per-message headers, which carry icon buttons of their own. */
-            if (header.closest('[class*="messagesContainer_"]')) continue;
-            var buttons = header.querySelectorAll('[class*="iconButton_"]');
+            if (!isMainHeader(headers[i])) continue;
+            var buttons = headers[i].querySelectorAll('[class*="iconButton_"]');
             if (buttons.length) return buttons[buttons.length - 1];
+        }
+        return null;
+    }
+
+    function findHeader() {
+        var headers = document.querySelectorAll('[class*="header_"]');
+        for (var i = 0; i < headers.length; i++) {
+            if (isMainHeader(headers[i])) return headers[i];
         }
         return null;
     }
@@ -228,31 +562,42 @@ RTL_JS_CODE = """
         var btn = document.createElement('button');
         btn.id = BTN_ID;
         btn.type = 'button';
-        btn.textContent = '\\u21C4';
+        btn.textContent = '⇄';
         btn.title = 'Toggle RTL mode';
         btn.setAttribute('aria-label', 'Toggle RTL mode');
         btn.addEventListener('click', function() {
             var root = document.getElementById('root');
             if (!root) return;
             root.classList.toggle(ROOT_CLASS);
+            saveState(root.classList.contains(ROOT_CLASS));
             paint(btn);
+            schedule();
         });
         return btn;
     }
 
     function tryInsertButton() {
-        if (document.getElementById(BTN_ID)) return;
+        var existing = document.getElementById(BTN_ID);
+        var anchor;
+        if (existing) {
+            /* A fallback button moves next to the native ones once they
+               render; otherwise it would stay in the fallback spot for good. */
+            if (!existing.classList.contains('yby-standalone')) return;
+            anchor = findAnchor();
+            if (!anchor) return;
+            existing.parentNode.removeChild(existing);
+        } else {
+            anchor = findAnchor();
+        }
 
-        var anchor = findAnchor();
         var btn = makeButton();
-
         if (anchor) {
             /* Copy the neighbour's classes so size, padding, hover and colours
                match the native buttons exactly. */
             btn.className = anchor.className;
             anchor.parentNode.insertBefore(btn, anchor.nextSibling);
         } else {
-            var header = document.querySelector('[class*="header_"]');
+            var header = findHeader();
             if (!header) return;
             btn.classList.add('yby-standalone');
             header.appendChild(btn);
@@ -264,27 +609,50 @@ RTL_JS_CODE = """
         paint(btn);
     }
 
-    /* React re-renders drop the button, so re-insert on mutation - but coalesce
-       the many mutations a streaming reply fires into one check per frame. */
+    /* Turn RTL back on if it was on last time. Returns false until #root exists. */
+    function restoreState() {
+        var root = document.getElementById('root');
+        if (!root) return false;
+        if (loadState()) root.classList.add(ROOT_CLASS);
+        return true;
+    }
+
+    var restored = restoreState();
+
+    function update() {
+        if (!restored) restored = restoreState();
+        tryInsertButton();
+        if (!document.querySelector(WATCHED)) return;
+        var on = isRtlOn();
+        if (!on && !touched) return;
+        var lang = on ? conversationLang() : null;
+        localize(lang);
+        orient(on, lang);
+    }
+
+    /* React re-renders drop the button and bring back English text, so check
+       again on mutation - but coalesce the many mutations a streaming reply
+       fires into one check per frame. */
     var scheduled = false;
     function schedule() {
         if (scheduled) return;
         scheduled = true;
         requestAnimationFrame(function() {
             scheduled = false;
-            tryInsertButton();
+            update();
         });
     }
 
     new MutationObserver(schedule).observe(document.body, {
         childList: true,
+        characterData: true,
         subtree: true
     });
 
     if (document.readyState !== 'loading') {
-        tryInsertButton();
+        update();
     } else {
-        document.addEventListener('DOMContentLoaded', tryInsertButton);
+        document.addEventListener('DOMContentLoaded', update);
     }
 })();
 /* End RTL Toggle Button */
@@ -297,6 +665,16 @@ RTL_END_MARKER = "/* End RTL Text Support for Claude Code VS Code / Cursor Exten
 # Markers to identify injected JS
 JS_START_MARKER = "/* RTL Toggle Button - Added by script */"
 JS_END_MARKER = "/* End RTL Toggle Button */"
+
+# Every (start, end) pair a block may carry, current one first. Markers written
+# by earlier versions of this script stay listed so an old install is still
+# detected, upgraded and removed.
+CSS_MARKERS = [
+    (RTL_START_MARKER, RTL_END_MARKER),
+    ("/* RTL Text Support for Claude Code VS Code Extension - Added by script */",
+     "/* End RTL Text Support for Claude Code VS Code Extension */"),
+]
+JS_MARKERS = [(JS_START_MARKER, JS_END_MARKER)]
 
 
 def _is_wsl():
@@ -458,23 +836,39 @@ def _write(path, content):
         f.write(content)
 
 
-def _has_marker(path, marker):
+def _contains_block(content, markers):
+    return any(start in content for start, _ in markers)
+
+
+def _has_marker(path, markers):
     if not path:
         return False
     try:
-        return marker in _read(path)
+        return _contains_block(_read(path), markers)
     except Exception:
         return False
 
 
 def is_rtl_installed(css_path):
-    """Check if RTL CSS is already injected"""
-    return _has_marker(css_path, RTL_START_MARKER)
+    """Check if RTL CSS is already injected (by this or an older version)"""
+    return _has_marker(css_path, CSS_MARKERS)
 
 
 def is_js_installed(js_path):
-    """Check if RTL JS button is already injected"""
-    return _has_marker(js_path, JS_START_MARKER)
+    """Check if RTL JS button is already injected (by this or an older version)"""
+    return _has_marker(js_path, JS_MARKERS)
+
+
+def _install_state(path, block, markers):
+    """'installed', 'outdated' or 'missing' for one injected file"""
+    try:
+        content = _read(path) if path else ""
+    except Exception:
+        return "missing"
+    if not _contains_block(content, markers):
+        return "missing"
+    clean, ok = _strip_blocks(content, markers)
+    return "installed" if ok and clean + "\n" + block == content else "outdated"
 
 
 def _strip_block(content, start_marker, end_marker):
@@ -496,27 +890,51 @@ def _strip_block(content, start_marker, end_marker):
     return content[:start_idx] + content[end_idx:]
 
 
-def _inject(path, block, start_marker, end_marker, label, name):
-    """Append block to path, or replace an outdated copy of it. Returns success."""
+def _strip_blocks(content, markers):
+    """Remove every marked block, current or legacy, including duplicates.
+
+    Returns (content, ok). ok is False when a start marker has no end marker
+    after it: the block's extent is unknown, so nothing can be cut safely.
+    """
+    for start, end in markers:
+        while start in content:
+            stripped = _strip_block(content, start, end)
+            if stripped == content:
+                return content, False
+            content = stripped
+    return content, True
+
+
+def _report_damaged(path, label, name):
+    print(f"  {label} The injected block in {name} is damaged (its end marker is missing)")
+    print(f"       Reinstall the Claude Code extension to get a clean {os.path.basename(path)}")
+
+
+def _inject(path, block, markers, label, name):
+    """Append block to path, replacing any older copy of it. Returns success."""
     try:
         content = _read(path)
-        if start_marker in content:
-            if block in content:
-                print(f"  {label} Already up to date in {name}")
-                return True
-            # Injected by an older version of this script - swap in the current
-            # block. The existing .bak still holds the untouched original.
-            content = _strip_block(content, start_marker, end_marker)
-            _write(path, content + "\n" + block)
-            print(f"  {label} Updated to the latest version in {name}")
+        clean, ok = _strip_blocks(content, markers)
+        if not ok:
+            _report_damaged(path, label, name)
+            return False
+        patched = clean + "\n" + block
+        if patched == content:
+            print(f"  {label} Already up to date in {name}")
             return True
 
+        # The backup must hold the unpatched file. Earlier versions could copy
+        # an already patched file into it, so such a backup is replaced too.
         backup_path = path + '.bak'
-        if not os.path.exists(backup_path):
-            shutil.copy2(path, backup_path)
+        if not os.path.exists(backup_path) or _has_marker(backup_path, markers):
+            _write(backup_path, clean)
             print(f"  {label} Backup created: {backup_path}")
-        _write(path, content + "\n" + block)
-        print(f"  {label} Added to {name}")
+
+        _write(path, patched)
+        if clean == content:
+            print(f"  {label} Added to {name}")
+        else:
+            print(f"  {label} Updated to the latest version in {name}")
         return True
     except PermissionError:
         print(f"  {label} Permission denied: {path}")
@@ -526,14 +944,15 @@ def _inject(path, block, start_marker, end_marker, label, name):
     return False
 
 
-def _remove(path, start_marker, end_marker, label, name):
+def _remove(path, markers, label, name):
     """Restore path from its .bak, or strip the block if that fails. Returns success."""
-    if not _has_marker(path, start_marker):
+    if not _has_marker(path, markers):
         print(f"  {label} Not installed in {name}")
         return True
 
     backup_path = path + '.bak'
-    if os.path.exists(backup_path):
+    backup_clean = os.path.exists(backup_path) and not _has_marker(backup_path, markers)
+    if backup_clean:
         try:
             shutil.copy2(backup_path, path)
             os.remove(backup_path)
@@ -543,7 +962,14 @@ def _remove(path, start_marker, end_marker, label, name):
             print(f"  {label} Backup restore failed: {e}, trying manual removal...")
 
     try:
-        _write(path, _strip_block(_read(path), start_marker, end_marker))
+        clean, ok = _strip_blocks(_read(path), markers)
+        if not ok:
+            _report_damaged(path, label, name)
+            return False
+        _write(path, clean)
+        # A backup that itself holds the patch would only bring it back later.
+        if os.path.exists(backup_path) and not backup_clean:
+            os.remove(backup_path)
         print(f"  {label} Removed from {name}")
         return True
     except Exception as e:
@@ -554,22 +980,20 @@ def _remove(path, start_marker, end_marker, label, name):
 def add_rtl_support(ext_info):
     """Add RTL CSS and JS toggle button to a Claude Code extension. Returns success."""
     name = ext_info['name']
-    ok = _inject(ext_info['css_path'], RTL_CSS_RULES,
-                 RTL_START_MARKER, RTL_END_MARKER, "CSS:", name)
+    ok = _inject(ext_info['css_path'], RTL_CSS_RULES, CSS_MARKERS, "CSS:", name)
     if not ext_info['js_path']:
         print(f"  JS:  index.js not found, skipping button injection")
         return ok
-    return _inject(ext_info['js_path'], RTL_JS_CODE,
-                   JS_START_MARKER, JS_END_MARKER, "JS: ", name) and ok
+    return _inject(ext_info['js_path'], RTL_JS_CODE, JS_MARKERS, "JS: ", name) and ok
 
 
 def remove_rtl_support(ext_info):
     """Remove RTL CSS and JS toggle button from a Claude Code extension. Returns success."""
     name = ext_info['name']
-    ok = _remove(ext_info['css_path'], RTL_START_MARKER, RTL_END_MARKER, "CSS:", name)
+    ok = _remove(ext_info['css_path'], CSS_MARKERS, "CSS:", name)
     if not ext_info['js_path']:
         return ok
-    return _remove(ext_info['js_path'], JS_START_MARKER, JS_END_MARKER, "JS: ", name) and ok
+    return _remove(ext_info['js_path'], JS_MARKERS, "JS: ", name) and ok
 
 
 def check_status(extensions):
@@ -578,15 +1002,20 @@ def check_status(extensions):
         print("\nNo Claude Code extensions found!")
         return
 
+    labels = {
+        "installed": "INSTALLED",
+        "outdated": "OUTDATED (run --apply to update)",
+        "missing": "Not installed",
+    }
     print(f"\nFound {len(extensions)} Claude Code extension(s):\n")
     for ext in extensions:
-        css_installed = is_rtl_installed(ext['css_path'])
-        js_installed = is_js_installed(ext['js_path'])
+        css_state = _install_state(ext['css_path'], RTL_CSS_RULES, CSS_MARKERS)
+        js_state = _install_state(ext['js_path'], RTL_JS_CODE, JS_MARKERS)
         css_backup = os.path.exists(ext['css_path'] + '.bak')
         js_backup = ext['js_path'] and os.path.exists(ext['js_path'] + '.bak')
         print(f"  {ext['name']}")
-        print(f"    CSS: {'INSTALLED' if css_installed else 'Not installed'}  |  {'Backup exists' if css_backup else 'No backup'}")
-        print(f"    JS:  {'INSTALLED' if js_installed else 'Not installed'}  |  {'Backup exists' if js_backup else 'No backup'}")
+        print(f"    CSS: {labels[css_state]}  |  {'Backup exists' if css_backup else 'No backup'}")
+        print(f"    JS:  {labels[js_state]}  |  {'Backup exists' if js_backup else 'No backup'}")
         print(f"    Path: {ext['css_path']}")
         print()
 
@@ -603,6 +1032,16 @@ def show_menu():
 
 
 USAGE = "Usage: python claude_code_rtl.py [--apply | --remove | --status]"
+
+
+def _pause(prompt):
+    """Wait for Enter in an interactive console; never block or fail a script."""
+    if not sys.stdin.isatty():
+        return
+    try:
+        input(prompt)
+    except EOFError:
+        pass
 
 
 def _run_all(action, verb, extensions):
@@ -632,7 +1071,7 @@ def main():
         print("\nNo Claude Code extensions found!")
         print("Make sure the 'Claude Code in VS Code' extension is installed in VS Code, Cursor, or Kiro.")
         if not flag:
-            input("\nPress Enter to exit...")
+            _pause("\nPress Enter to exit...")
         return 1
 
     print(f"Found {len(extensions)} extension(s)")
@@ -647,7 +1086,11 @@ def main():
 
     while True:
         show_menu()
-        choice = input("\n  Select option (1-4): ").strip()
+        try:
+            choice = input("\n  Select option (1-4): ").strip()
+        except EOFError:
+            # Input ran out (e.g. piped) - nothing more to do.
+            return 0
 
         if choice == "1":
             _run_all(add_rtl_support, "Adding", extensions)
@@ -664,7 +1107,7 @@ def main():
         else:
             print("\nInvalid choice")
 
-        input("\nPress Enter to continue...")
+        _pause("\nPress Enter to continue...")
 
 
 if __name__ == "__main__":
@@ -676,6 +1119,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nError: {e}")
         # Keep a double-clicked console window open, but never block a script.
-        if len(sys.argv) == 1 and sys.stdin.isatty():
-            input("Press Enter to close...")
+        if len(sys.argv) == 1:
+            _pause("Press Enter to close...")
         sys.exit(1)
