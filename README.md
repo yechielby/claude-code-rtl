@@ -18,7 +18,10 @@
 - **VS Code, Cursor & Kiro Support** - Works with the "Claude Code in VS Code" extension in all three editors
 - **Zero Configuration** - Works out of the box with a simple toggle button (⇄) in the chat interface
 - **Smart Text Handling** - Keeps code blocks and technical content in LTR for proper readability
+- **Remembers Your Choice** - RTL mode stays on after reloading the window or restarting the editor
+- **Translated Menus** - While RTL mode is on, the message menu (fork / rewind), the rewind confirmation dialog and the Agent map are shown in Arabic or Hebrew - whichever language you write in
 - **Backup & Restore** - Automatically creates backups before modifications, easy rollback available
+- **Safe Upgrades** - Detects installs made by older versions of the script and replaces them cleanly
 
 ---
 
@@ -42,6 +45,37 @@ The "Claude Code in VS Code" extension doesn't natively support RTL text directi
 
 ---
 
+## 🚀 Quick Start
+
+```bash
+git clone https://github.com/yechielby/claude-code-rtl.git
+cd claude-code-rtl
+python claude_code_rtl.py            # interactive menu
+python claude_code_rtl.py --apply    # add RTL to every install (or update an older one)
+python claude_code_rtl.py --remove   # remove RTL and restore the original files
+python claude_code_rtl.py --status   # INSTALLED / OUTDATED / Not installed
+```
+
+Then reload the editor window (`Ctrl+Shift+P` → `Developer: Reload Window`) and click **⇄** at the top of the Claude Code chat.
+
+### Translated menus
+
+While RTL mode is on, the fixed English strings of these parts of the UI are translated:
+
+- The menu on a message: *Fork conversation from here*, *Rewind code to here*, *Fork conversation and rewind code*
+- The rewind confirmation dialog (title, buttons, notes)
+- The Agent map dialog (title, subtitle, token counts)
+
+The language is picked from your messages in the conversation: Arabic if you write in Arabic, Hebrew if you write in Hebrew. Text written by Claude (such as agent task names) is never translated. Turning RTL off brings the English back. If a Claude Code update rewords one of these strings, it simply stays in English.
+
+### Running the tests
+
+```bash
+python -m unittest
+```
+
+---
+
 <a name="עברית"></a>
 
 <div dir="rtl" lang="he">
@@ -57,9 +91,10 @@ The "Claude Code in VS Code" extension doesn't natively support RTL text directi
 הסקריפט מבצע את הפעולות הבאות:
 1. **מאתר אוטומטית** את תיקיות ההתקנה של Claude Code (תומך ב-VS Code, Cursor ו-Kiro על Windows, macOS ו-Linux)
 2. **מזריק CSS** - מוסיף כללי עיצוב שהופכים את הטקסט לכיווניות RTL
-3. **מוסיף כפתור Toggle** - יוצר כפתור (`⇄`) בממשק להפעלה/כיבוי של מצב RTL
-4. **שומר גיבויים** - יוצר עותקי גיבוי של הקבצים המקוריים לפני כל שינוי
-5. **מאפשר הסרה** - אפשרות לשחזר את המצב המקורי בקלות
+3. **מוסיף כפתור Toggle** - יוצר כפתור (`⇄`) בממשק להפעלה/כיבוי של מצב RTL. הבחירה נשמרת גם אחרי טעינה מחדש של החלון
+4. **מתרגם תפריטים** - במצב RTL, התפריט של הודעה, חלון אישור ההחזרה ו-Agent map מוצגים בעברית או בערבית
+5. **שומר גיבויים** - יוצר עותקי גיבוי של הקבצים המקוריים לפני כל שינוי
+6. **מאפשר הסרה** - אפשרות לשחזר את המצב המקורי בקלות
 
 ## דרישות מערכת
 
@@ -118,6 +153,8 @@ python claude_code_rtl.py --status   # הצגת הסטטוס
 
 > **שים לב:** עדכון של Claude Code מותקן בתיקייה חדשה ללא RTL - הרץ `--apply` שוב אחרי כל עדכון.
 
+> **שדרוג מגרסה קודמת של הסקריפט:** `--status` יציג `OUTDATED` להתקנה ישנה. הרץ `--apply` והסקריפט יחליף אותה בגרסה החדשה, כולל התקנות שבוצעו בגרסה הראשונה.
+
 ### שלב 4: אתחול VS Code / Cursor / Kiro
 
 לאחר ביצוע השינויים:
@@ -130,6 +167,17 @@ python claude_code_rtl.py --status   # הצגת הסטטוס
 2. לחץ על הכפתור **⇄** בראש הצ'אט
 3. הממשק יעבור למצב RTL - טקסט יישר לימין
 4. לחץ שוב על הכפתור כדי לחזור למצב LTR
+
+המצב נשמר: אם השארת את RTL פעיל, הוא יופעל שוב אוטומטית אחרי טעינה מחדש של החלון.
+
+## תרגום תפריטים
+
+במצב RTL, הטקסטים הקבועים באנגלית בחלקים הבאים מתורגמים:
+- התפריט של הודעה: *Fork conversation from here*, *Rewind code to here*, *Fork conversation and rewind code*
+- חלון אישור ההחזרה (Rewind) - כותרת, כפתורים והערות
+- חלון Agent map - כותרת, שורת המשנה ומספר הטוקנים
+
+השפה נבחרת לפי ההודעות שלך בשיחה: עברית אם אתה כותב בעברית, ערבית אם בערבית. טקסט ש-Claude כתב (כמו שמות המשימות של הסוכנים) לא מתורגם. כיבוי מצב RTL מחזיר את האנגלית. אם עדכון של Claude Code משנה את הניסוח של אחד הטקסטים, הוא פשוט יישאר באנגלית.
 
 ## מה משתנה במצב RTL?
 
@@ -158,8 +206,9 @@ python claude_code_rtl.py --status   # הצגת הסטטוס
 
 ```
 claude-code-rtl/
-├── claude_code_rtl.py    # הסקריפט הראשי
-└── README.md             # מדריך זה
+├── claude_code_rtl.py        # הסקריפט הראשי
+├── test_claude_code_rtl.py   # בדיקות (python -m unittest)
+└── README.md                 # מדריך זה
 ```
 
 ## פתרון בעיות
@@ -232,9 +281,10 @@ claude-code-rtl/
 يقوم البرنامج بتنفيذ العمليات التالية:
 1. **يحدد تلقائيًا** مجلدات تثبيت Claude Code (يدعم VS Code و Cursor و Kiro على Windows و macOS و Linux)
 2. **يحقن CSS** - يضيف قواعد تصميم تحول النص إلى اتجاه RTL
-3. **يضيف زر Toggle** - ينشئ زرًا (`⇄`) في الواجهة لتفعيل/إيقاف وضع RTL
-4. **يحفظ نسخًا احتياطية** - ينشئ نسخًا احتياطية من الملفات الأصلية قبل أي تعديل
-5. **يسمح بالإزالة** - خيار لاستعادة الحالة الأصلية بسهولة
+3. **يضيف زر Toggle** - ينشئ زرًا (`⇄`) في الواجهة لتفعيل/إيقاف وضع RTL، ويتذكّر اختيارك حتى بعد إعادة تحميل النافذة
+4. **يعرّب القوائم** - في وضع RTL تظهر قائمة الرسالة ونافذة تأكيد الإرجاع ونافذة Agent map بالعربية أو العبرية
+5. **يحفظ نسخًا احتياطية** - ينشئ نسخًا احتياطية من الملفات الأصلية قبل أي تعديل
+6. **يسمح بالإزالة** - خيار لاستعادة الحالة الأصلية بسهولة
 
 ## متطلبات النظام
 
@@ -293,18 +343,31 @@ python claude_code_rtl.py --status   # عرض الحالة
 
 > **ملاحظة:** تحديث Claude Code يُثبَّت في مجلد جديد بدون RTL - شغّل `--apply` مرة أخرى بعد كل تحديث.
 
+> **الترقية من إصدار قديم من البرنامج:** يُظهر `--status` الحالة `OUTDATED` للتثبيت القديم. شغّل `--apply` وسيستبدله البرنامج بالإصدار الجديد، بما في ذلك التثبيتات التي تمت بالإصدار الأول.
+
 ### الخطوة 4: إعادة تشغيل VS Code / Cursor / Kiro
 
 بعد إجراء التغييرات:
 - **أغلق وأعد تحميل** نافذة VS Code / Cursor / Kiro (أو اضغط `Ctrl+Shift+P` → `Developer: Reload Window`)
 - سيظهر الزر `⇄` في واجهة محادثة Claude
 
-## كيفية الاستخدام?
+## كيفية الاستخدام؟
 
 1. افتح لوحة محادثة Claude Code في VS Code / Cursor / Kiro
 2. اضغط على الزر **⇄** في أعلى المحادثة
 3. ستتحول الواجهة إلى وضع RTL - سيتم محاذاة النص إلى اليمين
 4. اضغط على الزر مرة أخرى للعودة إلى وضع LTR
+
+يُحفظ الوضع تلقائيًا: إذا تركت RTL مفعّلًا، سيعود مفعّلًا بعد إعادة تحميل النافذة.
+
+## تعريب القوائم
+
+في وضع RTL تُترجم النصوص الإنجليزية الثابتة في الأجزاء التالية:
+- قائمة الرسالة: *Fork conversation from here* و*Rewind code to here* و*Fork conversation and rewind code*
+- نافذة تأكيد الإرجاع (Rewind): العنوان والأزرار والملاحظات
+- نافذة Agent map: العنوان والسطر الفرعي وعدد التوكنات
+
+تُختار اللغة حسب رسائلك في المحادثة: العربية إذا كنت تكتب بالعربية، والعبرية إذا كنت تكتب بالعبرية. النصوص التي يكتبها Claude (مثل أسماء مهام الوكلاء) لا تُترجم. إيقاف وضع RTL يعيد النصوص الإنجليزية. وإذا غيّر تحديث من Claude Code صياغة أحد هذه النصوص، فسيظهر بالإنجليزية فقط دون أي عطل.
 
 ## ماذا يتغير في وضع RTL؟
 
@@ -333,8 +396,9 @@ python claude_code_rtl.py --status   # عرض الحالة
 
 ```
 claude-code-rtl/
-├── claude_code_rtl.py    # البرنامج الرئيسي
-└── README.md             # هذا الدليل
+├── claude_code_rtl.py        # البرنامج الرئيسي
+├── test_claude_code_rtl.py   # الاختبارات (python -m unittest)
+└── README.md                 # هذا الدليل
 ```
 
 ## حل المشاكل
@@ -388,6 +452,8 @@ claude-code-rtl/
 
 **إذا ساعدتك الأداة، امنح المشروع ⭐!**
 
+</div>
+
 ---
 
 ## License
@@ -395,5 +461,3 @@ claude-code-rtl/
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 **Contributing & Support:** Contributions, bug reports, and feature requests are welcome! Please open an Issue or Pull Request on GitHub.
-
-</div>
